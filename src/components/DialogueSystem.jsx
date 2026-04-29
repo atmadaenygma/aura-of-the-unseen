@@ -2,48 +2,63 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DIALOGUE_DATA } from '../data/dialogue';
 import { DiceCheck } from './DiceCheck';
 
+// Map a speaker name to their portrait path.
+// Returns null (not a broken fallback) if no portrait exists —
+// the portrait slot simply renders nothing, which is correct for
+// future NPCs without a portrait asset yet.
+const resolvePortrait = (speaker) => {
+  if (!speaker) return null;
+  const slug = speaker
+    .toLowerCase()
+    .replace(/^old /, '')  // "Old Silas" → "silas"
+    .replace(/\s+/g, '_'); // spaces → underscores
+  return `/ui/portraits/${slug}_portrait.png`;
+};
+
 export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit }) => {
-  const [currentNode, setCurrentNode] = useState(DIALOGUE_DATA[dialogueKey]);
-  const [history, setHistory] = useState([]); 
+  const [currentNode, setCurrentNode] = useState(() => DIALOGUE_DATA[dialogueKey]);
+  const [history,     setHistory]     = useState([]);
   const [activeCheck, setActiveCheck] = useState(null);
-  const [showDice, setShowDice] = useState(false);
-  
+  const [showDice,    setShowDice]    = useState(false);
+  const [npcPortraitError, setNpcPortraitError] = useState(false);
+
   const scrollRef = useRef(null);
 
-  // Auto-scroll logic
+  // Auto-scroll to bottom on every ledger change
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [history, currentNode, showDice]);
 
-  const getNPCPortrait = (speaker) => {
-    if (!speaker) return '';
-    const slug = speaker.toLowerCase().replace('old ', '').replace(' ', '_');
-    return `/ui/portraits/${slug}_portrait.png`;
-  };
+  // Reset portrait error state when speaker changes
+  useEffect(() => {
+    setNpcPortraitError(false);
+  }, [currentNode?.speaker]);
 
   const processChoice = (choice) => {
-    // Record current node into history
+    // Commit current node to history before advancing
     setHistory(prev => [...prev, {
-      speaker: currentNode.speaker,
-      text: currentNode.text,
-      side: currentNode.side,
+      speaker:       currentNode.speaker,
+      text:          currentNode.text,
+      side:          currentNode.side,
       introspection: currentNode.introspection,
-      facet: currentNode.facet,
-      chosenOption: choice.text 
+      facet:         currentNode.facet,
+      chosenOption:  choice.text,
     }]);
 
+    // If this choice requires a skill check, hand off to DiceCheck
     if (choice.check) {
       setActiveCheck(choice);
       setShowDice(true);
       return;
     }
 
+    // Apply any state mutations from this choice
     const updates = { ...gameState };
-    if (choice.flagTrigger) updates.flags = { ...updates.flags, [choice.flagTrigger]: true };
-    if (choice.impact) updates.integrity = Math.max(0, updates.integrity + choice.impact);
-    if (choice.rewardMoney) updates.money += choice.rewardMoney;
+    if (choice.flagTrigger) updates.flags     = { ...updates.flags, [choice.flagTrigger]: true };
+    if (choice.impact)      updates.integrity = Math.max(0, updates.integrity + choice.impact);
+    if (choice.rewardMoney) updates.money    += choice.rewardMoney;
     setGameState(updates);
 
     if (choice.next) setCurrentNode(DIALOGUE_DATA[choice.next]);
@@ -59,75 +74,119 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
 
   if (!currentNode) return null;
 
+  const npcPortraitSrc = resolvePortrait(currentNode.speaker);
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
       background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
-      backdropFilter: 'blur(7px)', overflow: 'hidden'
+      backdropFilter: 'blur(7px)', overflow: 'hidden',
     }}>
-      
+
       {/* 1. THE SCROLLABLE CENTERED LEDGER */}
-      <div 
+      <div
         ref={scrollRef}
         className="ledger-scroll-container"
         style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
           width: '450px', height: '650px', background: '#fff', border: '8px double #000',
           padding: '40px', display: 'flex', flexDirection: 'column',
-          boxShadow: '0 30px 100px rgba(0,0,0,0.8)', zIndex: 10, overflowY: 'auto',
-          scrollBehavior: 'smooth'
+          boxShadow: '0 30px 100px rgba(0,0,0,0.8)', zIndex: 10,
+          overflowY: 'auto', scrollBehavior: 'smooth',
         }}
       >
-        
-        {/* HISTORY (Includes previous banners) */}
+        {/* HISTORY — faded record of previous exchanges */}
         {history.map((record, idx) => (
           <div key={`hist-${idx}`} style={{ marginBottom: '40px', opacity: 0.5, borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
             {record.facet && (
-                <img src={`/ui/concious_thoughts/${record.facet}.png`} style={{ width: '100%', height: 'auto', opacity: 0.4, marginBottom: '10px' }} />
+              <img
+                src={`/ui/concious_thoughts/${record.facet}.png`}
+                style={{ width: '100%', height: 'auto', opacity: 0.4, marginBottom: '10px' }}
+                alt=""
+              />
             )}
-            <div style={{ textAlign: record.side === 'left' ? 'left' : 'right', color: '#888', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>{record.speaker}</div>
-            <div style={{ textAlign: record.side === 'left' ? 'left' : 'right', color: '#444', fontSize: '16px', fontFamily: 'serif', fontStyle: 'italic' }}>"{record.text}"</div>
-            <div style={{ textAlign: 'left', color: '#000', fontSize: '13px', marginTop: '10px', fontWeight: 'bold' }}>Maya: "{record.chosenOption}"</div>
+            <div style={{ textAlign: record.side === 'left' ? 'left' : 'right', color: '#888', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+              {record.speaker}
+            </div>
+            <div style={{ textAlign: record.side === 'left' ? 'left' : 'right', color: '#444', fontSize: '16px', fontFamily: 'serif', fontStyle: 'italic' }}>
+              "{record.text}"
+            </div>
+            <div style={{ textAlign: 'left', color: '#000', fontSize: '13px', marginTop: '10px', fontWeight: 'bold' }}>
+              Maya: "{record.chosenOption}"
+            </div>
           </div>
         ))}
 
         {!showDice ? (
           <div style={{ minHeight: '100%' }}>
-            <div style={{ textAlign: currentNode.side === 'left' ? 'left' : 'right', color: '#000', fontSize: '13px', fontWeight: '900', letterSpacing: '5px', marginBottom: '20px', borderBottom: '3px solid #000', paddingBottom: '10px' }}>
+            {/* SPEAKER HEADER */}
+            <div style={{
+              textAlign: currentNode.side === 'left' ? 'left' : 'right',
+              color: '#000', fontSize: '13px', fontWeight: '900', letterSpacing: '5px',
+              marginBottom: '20px', borderBottom: '3px solid #000', paddingBottom: '10px',
+            }}>
               {currentNode.speaker.toUpperCase()}
             </div>
 
-            <div style={{ textAlign: currentNode.side === 'left' ? 'left' : 'right', color: '#000', fontSize: '21px', fontFamily: 'serif', lineHeight: '1.4', marginBottom: '30px', fontWeight: '600' }}>
+            {/* DIALOGUE TEXT */}
+            <div style={{
+              textAlign: currentNode.side === 'left' ? 'left' : 'right',
+              color: '#000', fontSize: '21px', fontFamily: 'serif',
+              lineHeight: '1.4', marginBottom: '30px', fontWeight: '600',
+            }}>
               "{currentNode.text}"
             </div>
 
-            {/* --- THE FACET BANNER (Current Node) --- */}
+            {/* NEUROLOGICAL FACET BANNER */}
             {currentNode.introspection && (
-                <div style={{ position: 'relative', background: '#f0fafa', padding: '0px 0px 25px 0px', border: '1px solid #00808033', marginBottom: '40px', overflow: 'hidden' }}>
-                    {currentNode.facet && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <img 
-                                src={`/ui/concious_thoughts/${currentNode.facet}.png`} 
-                                style={{ width: '100%', height: 'auto', display: 'block', marginBottom: '15px' }} 
-                                alt="Neurological Facet" 
-                                onError={(e) => console.error(`MISSING ASSET: /ui/concious_thoughts/${currentNode.facet}.png`)}
-                            />
-                            <span style={{ color: '#008080', fontSize: '12px', fontWeight: '900', letterSpacing: '4px', textTransform: 'uppercase', marginBottom: '15px', borderBottom: '1px solid #00808033', paddingBottom: '5px' }}>
-                                {currentNode.facet.replace(/_/g, ' ')}
-                            </span>
-                        </div>
-                    )}
-                    <div style={{ color: '#008080', fontSize: '15px', fontStyle: 'italic', lineHeight: '1.7', opacity: 0.9, textAlign: 'center', padding: '0 25px' }}>
-                        {currentNode.introspection}
-                    </div>
+              <div style={{
+                position: 'relative', background: '#f0fafa',
+                padding: '0px 0px 25px 0px', border: '1px solid #00808033',
+                marginBottom: '40px', overflow: 'hidden',
+              }}>
+                {currentNode.facet && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <img
+                      src={`/ui/concious_thoughts/${currentNode.facet}.png`}
+                      style={{ width: '100%', height: 'auto', display: 'block', marginBottom: '15px' }}
+                      alt="Neurological Facet"
+                      onError={(e) => {
+                        console.error(`MISSING ASSET: /ui/concious_thoughts/${currentNode.facet}.png`);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <span style={{
+                      color: '#008080', fontSize: '12px', fontWeight: '900', letterSpacing: '4px',
+                      textTransform: 'uppercase', marginBottom: '15px',
+                      borderBottom: '1px solid #00808033', paddingBottom: '5px',
+                    }}>
+                      {currentNode.facet.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                )}
+                <div style={{
+                  color: '#008080', fontSize: '15px', fontStyle: 'italic',
+                  lineHeight: '1.7', opacity: 0.9, textAlign: 'center', padding: '0 25px',
+                }}>
+                  {currentNode.introspection}
                 </div>
+              </div>
             )}
 
+            {/* DIALOGUE OPTIONS */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '20px' }}>
               {currentNode.options.map((opt, i) => (
-                <button key={i} onClick={() => processChoice(opt)} style={{ background: 'none', border: '1px solid #000', color: '#000', padding: '12px', textAlign: 'left', cursor: 'pointer', fontFamily: 'serif', fontSize: '15px', fontWeight: '900', transition: 'background 0.1s' }}
-                  onMouseEnter={(e) => { e.target.style.background = '#000'; e.target.style.color = '#fff'; }}
-                  onMouseLeave={(e) => { e.target.style.background = 'none'; e.target.style.color = '#000'; }}
+                <button
+                  key={i}
+                  onClick={() => processChoice(opt)}
+                  style={{
+                    background: 'none', border: '1px solid #000', color: '#000',
+                    padding: '12px', textAlign: 'left', cursor: 'pointer',
+                    fontFamily: 'serif', fontSize: '15px', fontWeight: '900',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#000'; }}
                 >
                   {i + 1}. {opt.text}
                 </button>
@@ -136,23 +195,45 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', borderTop: '2px solid black', marginTop: '20px' }}>
-              <DiceCheck skill={activeCheck.check.skill} difficulty={activeCheck.check.difficulty} onComplete={onDiceComplete} />
+            <DiceCheck
+              skill={activeCheck.check.skill}
+              difficulty={activeCheck.check.difficulty}
+              onComplete={onDiceComplete}
+            />
           </div>
         )}
       </div>
 
       {/* 2. THE COLOSSAL PORTRAITS */}
-      <div style={{ position: 'absolute', bottom: '-20px', left: 0, right: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', width: '100vw', padding: '0 2.5%', pointerEvents: 'none', zIndex: 100 }}>
+      <div style={{
+        position: 'absolute', bottom: '-20px', left: 0, right: 0,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+        width: '100vw', padding: '0 2.5%', pointerEvents: 'none', zIndex: 100,
+      }}>
+        {/* Maya — always left */}
         <div style={{ width: '945px', flexShrink: 0, marginLeft: '8%' }}>
-          <img src="/ui/portraits/protagonist_portrait.png" style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(20px 0 40px rgba(0,0,0,0.8))' }} alt="Maya" />
+          <img
+            src="/ui/portraits/protagonist_portrait.png"
+            style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(20px 0 40px rgba(0,0,0,0.8))' }}
+            alt="Maya"
+          />
         </div>
+
+        {/* NPC — right side. Hides gracefully if no portrait exists for this speaker */}
         <div style={{ width: '945px', flexShrink: 0, marginRight: '10%' }}>
-          <img src={getNPCPortrait(currentNode.speaker)} style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(-20px 0 40px rgba(0,0,0,0.8))' }} alt="NPC" onError={(e) => { e.target.src = '/ui/portraits/silas_portrait.png'; }} />
+          {npcPortraitSrc && !npcPortraitError && (
+            <img
+              src={npcPortraitSrc}
+              style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(-20px 0 40px rgba(0,0,0,0.8))' }}
+              alt={currentNode.speaker}
+              onError={() => setNpcPortraitError(true)}
+            />
+          )}
         </div>
       </div>
 
       <style>{`
-        .ledger-scroll-container::-webkit-scrollbar { width: 6px; }
+        .ledger-scroll-container::-webkit-scrollbar       { width: 6px; }
         .ledger-scroll-container::-webkit-scrollbar-track { background: #f1f1f1; }
         .ledger-scroll-container::-webkit-scrollbar-thumb { background: #000; }
         .ledger-scroll-container::-webkit-scrollbar-thumb:hover { background: #333; }

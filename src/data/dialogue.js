@@ -29,14 +29,31 @@ export const DIALOGUE_DATA = {
     text: "Well. You're here now. What is it you're seeking beneath this sun?",
     introspection: "The Hub. From here, you can probe his memories or assess the threat of the house.",
     options: [
-      { text: "Tell me about the history of this house.", next: "branch_history" },
-      { text: "Who is the man standing in the yard? (The Overseer)", next: "branch_overseer" },
-      { 
-        text: "[Genetic Memory] (Peer into the wood grain) 'I can feel the history of the hands that built this porch.'", 
+      // ── Normal options — hidden after betrayal ──────────────────────────────
+      { text: "Tell me about the history of this house.",             next: "branch_history",  requireNoFlag: "silas_betrayed" },
+      { text: "Who is the man standing in the yard? (The Overseer)", next: "branch_overseer", requireNoFlag: "silas_betrayed" },
+      {
+        text: "[Genetic Memory] (Peer into the wood grain) 'I can feel the history of the hands that built this porch.'",
         facet: "genetic_memory",
-        next: "branch_truth" 
+        next: "branch_truth",
+        requireNoFlag: "silas_betrayed",
       },
-      { text: "[Leave] I must continue my journey.", next: null }
+      { text: "'You seem troubled. What is it?'", next: "silas_note_request", requireNoFlag: "silas_betrayed" },
+      {
+        text: "'I found something in the shelves — a folded note. Is it yours?'",
+        next: "silas_note_receive",
+        requireItem: "folded_note",
+        takeItem: "folded_note",
+        requireNoFlag: "silas_betrayed",
+      },
+      { text: "[Leave] I must continue my journey.", next: null, requireNoFlag: "silas_betrayed" },
+
+      // ── Betrayal confrontation — only visible after silas_betrayed is set ──
+      {
+        text: "(His eyes are different. He knows.)",
+        next: "silas_betrayed_confront",
+        requireFlag: "silas_betrayed",
+      },
     ]
   },
 
@@ -93,6 +110,127 @@ export const DIALOGUE_DATA = {
     options: [
         { text: "We do not watch. We survive.", next: "silas_hub" },
         { text: "[Leave] I've heard enough.", next: null }
+    ]
+  },
+
+  // ── THE FOLDED NOTE QUEST ────────────────────────────────────────────────────
+
+  // Silas mentions the note — accessible from the hub
+  "silas_note_request": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "There's a folded note I left in the shelves. My hands shake too badly to go looking. Would you find it for me?",
+    introspection: "He isn't asking lightly. Whatever is in that note has weight.",
+    options: [
+      { text: "'I'll look for it, Silas.'", next: "silas_hub" },
+      { text: "'What's written in it?'", next: "silas_note_secret" },
+    ]
+  },
+
+  "silas_note_secret": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "Names. People who passed through here and kept moving north. I just need to know if mine is among them — or if I was always meant to stay.",
+    options: [
+      { text: "'I'll find it for you.'", next: "silas_hub" },
+    ]
+  },
+
+  // Triggered by: GIVE mechanic (pendingGive → giveDialogue) OR dialogue option above.
+  // takeItem on every choice ensures the note is removed regardless of which path opened this node.
+  // The hub dialogue option also sets takeItem, but that's harmless if the item is already gone.
+  "silas_note_receive": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "...You found it.",
+    introspection: "He takes it without opening it. His hands have stopped shaking.",
+    options: [
+      {
+        text: "'What does it say?'",
+        next: "silas_note_truth",
+        takeItem: "folded_note",
+      },
+      {
+        text: "'It's yours, Silas. Think nothing of it.'",
+        next: "silas_hub",
+        takeItem: "folded_note",
+        flagTrigger: "silas_note_delivered",
+        impact: 5,
+      },
+    ]
+  },
+
+  "silas_note_truth": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "It says I was supposed to leave on a train. Winter of '71. Train never came. I stayed. Made a life from what was left. That is all any of us can do.",
+    introspection: "MEMORY UNLOCKED: Silas missed the train. The train was freedom. He built his own, slowly, in the remaining years.",
+    facet: "genetic_memory",
+    options: [
+      {
+        text: "'You're still here. That matters, Silas.'",
+        next: "silas_hub",
+        flagTrigger: "silas_note_delivered",
+        impact: 5,
+      },
+    ]
+  },
+
+  // ── SILAS BETRAYAL CONFRONTATION ────────────────────────────────────────────
+
+  "silas_betrayed_confront": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "Miller told me. Said someone brought him a note. My note. I looked for it in the shelves and it was gone. I thought you were different.",
+    introspection: "He doesn't raise his voice. That's worse than if he had.",
+    options: [
+      {
+        text: "'I'm sorry, Silas. I don't know what I was thinking.'",
+        next: "silas_betrayed_forgive",
+        impact: -10,
+      },
+      {
+        text: "Say nothing. Look at the floor.",
+        next: "silas_betrayed_cold",
+        impact: -20,
+      },
+    ]
+  },
+
+  "silas_betrayed_forgive": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "Sorry doesn't put the note back. Sorry doesn't undo what Miller knows now. You'd best stay out of my sight for a while. I'll pray I'm wrong about you.",
+    options: [
+      { text: "[Leave]", next: null },
+    ]
+  },
+
+  "silas_betrayed_cold": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "That's what I thought. Go on, then.",
+    introspection: "He turns away. The conversation is over before it began.",
+    options: [
+      { text: "[Leave]", next: null },
+    ]
+  },
+
+  // ── THE OVERSEER — ANTI QUEST ────────────────────────────────────────────────
+
+  "overseer_note_take": {
+    speaker: "The Overseer",
+    side: "right",
+    text: "Ha. Old Silas and his little train. We caught him at the station in the winter of '71 — pulled him off the platform in front of his wife. Dragged him back through the snow. He cried the whole way. Got exactly what was coming to him.",
+    introspection: "He snatches it without reading it. To him it is nothing — a scrap. To Silas it was the only proof the train was ever real.",
+    options: [
+      {
+        text: "Say nothing. Walk away.",
+        next: null,
+        takeItem: "folded_note",
+        flagTrigger: "silas_betrayed",
+        impact: -20,
+      },
     ]
   },
 

@@ -51,11 +51,12 @@ export const Character = ({
   // --- MOTION REFS ---
   // All game-loop state lives in refs. This decouples the 60fps loop from React's
   // render cycle entirely. The loop never restarts due to direction/movement changes.
-  const dirRef       = useRef('DOWN');
-  const isMovingRef  = useRef(false);
-  const isKneelingRef = useRef(false);
-  const flipRef      = useRef(false);
-  const animSrcRef   = useRef(KINETIC_LOCKED_DATA('DOWN', false, false).src);
+  const dirRef         = useRef('DOWN');
+  const isMovingRef    = useRef(false);
+  const isKneelingRef  = useRef(false);
+  const isInHideZoneRef = useRef(false); // tracks whether Maya is currently inside a HIDE_ZONE
+  const flipRef        = useRef(false);
+  const animSrcRef     = useRef(KINETIC_LOCKED_DATA('DOWN', false, false).src);
 
   // --- ANIMATION STATE ---
   // The ONLY React state in the game loop. Triggers a re-render exclusively when
@@ -71,11 +72,15 @@ export const Character = ({
   const gameStateRef       = useRef(gameState);
   const setGameStateRef    = useRef(setGameState);
 
+  // Synchronous ref updates during render — guarantees fresh values in the rAF loop
+  // without any post-commit delay. Callback refs still use useEffect because they
+  // only change when parent recreates them (rare), not on every render.
+  gameStateRef.current    = gameState;
+  setGameStateRef.current = setGameState;
+
   useEffect(() => { onNearbyEntityRef.current  = onNearbyEntity; },  [onNearbyEntity]);
   useEffect(() => { onInteractRef.current      = onInteract; },      [onInteract]);
   useEffect(() => { checkCollisionRef.current  = checkCollision; },  [checkCollision]);
-  useEffect(() => { gameStateRef.current       = gameState; },       [gameState]);
-  useEffect(() => { setGameStateRef.current    = setGameState; },    [setGameState]);
 
   // --- ANIMATION UPDATER ---
   // Called from the game loop and from the keydown handler.
@@ -93,21 +98,30 @@ export const Character = ({
   // Stable (empty deps). All callbacks accessed via refs.
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.type === 'mousedown' && e.button === 2) { mousePressed.current.right = true; return; }
+      // Mouse events share this handler for right-click tracking only.
+      // Any mousedown falls through here — guard ALL of them before touching e.key.
+      if (e.type === 'mousedown') {
+        if (e.button === 2) mousePressed.current.right = true;
+        return;
+      }
       const k = e.key.toLowerCase();
       keysPressed.current[k] = true;
 
-      if (k === 'e') onInteractRef.current('E');
+      // e.repeat is true when the key is held and the browser fires a repeat event.
+      // Without this guard: give fires on press-1 (clears pendingGive), React renders,
+      // then press-2 (repeat) sees pendingGive=null and opens dialogue instead.
+      if (k === 'e' && !e.repeat) onInteractRef.current('E');
       if (k === 'c') {
         const newKneeling = !isKneelingRef.current;
         isKneelingRef.current = newKneeling;
-        // Update animation immediately on kneel toggle, don't wait for next frame
         updateAnimation(dirRef.current, isMovingRef.current, newKneeling);
-        onInteractRef.current('C'); // Signal Stage to toggle isMayaHidden if near a HIDE_ZONE
       }
     };
     const handleKeyUp = (e) => {
-      if (e.type === 'mouseup' && e.button === 2) { mousePressed.current.right = false; return; }
+      if (e.type === 'mouseup') {
+        if (e.button === 2) mousePressed.current.right = false;
+        return;
+      }
       keysPressed.current[e.key.toLowerCase()] = false;
     };
 
@@ -161,8 +175,17 @@ export const Character = ({
           // WALK and EXIT and HIDE_ZONE allow movement.
           // INTERACT is solid — Maya is stopped by the object but [E] prompt appears.
           // BLOCK is a wall — hard stop with no prompt.
-          if (res.type === 'WALK' || res.type === 'EXIT' || res.type === 'HIDE_ZONE') {
+          // HIDE_ZONE entry is blocked while standing — Maya must crouch to go under furniture.
+          // Exception: if Maya is already on a HIDE_ZONE pixel (mask painted wider than intended),
+          // allow movement so she isn't permanently trapped.
+          const canMove = res.type === 'WALK' || res.type === 'EXIT' ||
+              (res.type === 'HIDE_ZONE' && isKneelingRef.current);
+          if (canMove) {
             pos.current.x = nX; pos.current.y = nY;
+            // Only update hide zone tracking when Maya actually moves into/out of the zone.
+            // Checking the proposed position (res) when movement is rejected would set this
+            // true while Maya stands at the boundary — blocking [C] uncrouch incorrectly.
+            isInHideZoneRef.current = res.type === 'HIDE_ZONE';
           }
 
           // Compute new direction from input vector
@@ -180,8 +203,9 @@ export const Character = ({
           }
         } else {
           // Check collision at current position — CRITICAL: detection must fire when stationary.
-          // Without this, the [E] prompt vanishes the moment Maya stops walking near an NPC.
           res = checkCollisionRef.current(pos.current.x, pos.current.y);
+          // When stationary, reflect actual position in the hide zone tracker
+          isInHideZoneRef.current = res.type === 'HIDE_ZONE';
 
           // Transition to idle animation once, not every frame
           if (isMovingRef.current) {
@@ -190,8 +214,8 @@ export const Character = ({
           }
         }
 
-        // Always fire entity detection — covers both moving and stationary states
-        onNearbyEntityRef.current(res, pos.current);
+        // Always fire entity detection — passes crouching state and facing direction
+        onNearbyEntityRef.current(res, pos.current, isKneelingRef.current, dirRef.current);
       }
 
       // Direct DOM manipulation for position & camera — bypasses React entirely at 60fps

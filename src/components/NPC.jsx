@@ -1,10 +1,10 @@
 import React from 'react';
 
-export const NPC = ({ id, name, assetPath, spawnX, spawnY, zoom, activeBark }) => {
+export const NPC = ({ id, name, assetPath, spawnX, spawnY, zoom, activeBark, scale = 1 }) => {
   // 1. CRITICAL SAFETY GUARD: If coordinates are missing, don't render.
   if (spawnX === undefined || spawnY === undefined) return null;
 
-  const SPRITE_SIZE = 110; 
+  const SPRITE_SIZE = 110 * scale;
 
   return (
     <div style={{

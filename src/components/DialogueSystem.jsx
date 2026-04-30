@@ -11,6 +11,7 @@ const resolvePortrait = (speaker) => {
   const slug = speaker
     .toLowerCase()
     .replace(/^old /, '')  // "Old Silas" → "silas"
+    .replace(/^the /, '')  // "The Overseer" → "overseer"
     .replace(/\s+/g, '_'); // spaces → underscores
   return `/ui/portraits/${slug}_portrait.png`;
 };
@@ -59,6 +60,13 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
     if (choice.flagTrigger) updates.flags     = { ...updates.flags, [choice.flagTrigger]: true };
     if (choice.impact)      updates.integrity = Math.max(0, updates.integrity + choice.impact);
     if (choice.rewardMoney) updates.money    += choice.rewardMoney;
+    // takeItem — remove a specific item id from inventory when the choice is made
+    if (choice.takeItem) {
+      const inv = Array.from({ length: 20 }, (_, i) => (updates.inventory || [])[i] ?? null);
+      const idx = inv.findIndex(it => it?.id === choice.takeItem);
+      if (idx !== -1) inv[idx] = null;
+      updates.inventory = inv;
+    }
     setGameState(updates);
 
     if (choice.next) setCurrentNode(DIALOGUE_DATA[choice.next]);
@@ -173,9 +181,17 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
               </div>
             )}
 
-            {/* DIALOGUE OPTIONS */}
+            {/* DIALOGUE OPTIONS
+                requireItem    — hidden unless item is in inventory
+                requireFlag    — hidden unless flag is set
+                requireNoFlag  — hidden if flag is set */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '20px' }}>
-              {currentNode.options.map((opt, i) => (
+              {currentNode.options.filter(opt => {
+                if (opt.requireItem    && !(gameState.inventory || []).some(it => it?.id === opt.requireItem)) return false;
+                if (opt.requireFlag    && !gameState.flags?.[opt.requireFlag])   return false;
+                if (opt.requireNoFlag  &&  gameState.flags?.[opt.requireNoFlag]) return false;
+                return true;
+              }).map((opt, i) => (
                 <button
                   key={i}
                   onClick={() => processChoice(opt)}

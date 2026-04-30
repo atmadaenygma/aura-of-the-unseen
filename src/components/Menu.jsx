@@ -1,11 +1,40 @@
 import React, { useState } from 'react';
+import { clearSave } from '../utils/persistence';
 
 /**
  * AURA OF THE UNSEEN: IDENTITY LEDGER v2.0
  * Bento Grid organization for Morphs, Inventory, and Journal.
  */
 export const Menu = ({ gameState, setGameState, onClose }) => {
-  const [activeTab, setActiveTab] = useState('IDENTITIES');
+  const [activeTab,     setActiveTab]     = useState('IDENTITIES');
+  const [confirmReset,  setConfirmReset]  = useState(false);
+
+  const resetHouseQuest = () => {
+    clearSave();
+    setGameState({
+      integrity:      100,
+      vigor:          100,
+      money:          0.25,
+      inventory:      [],
+      flags:          {},
+      memories:       [],
+      containers:     {},
+      pendingGive:    null,
+      npcSuspicion:   {},
+      currentRoom:    'test_house',
+      activeForm:     'SOCIAL_CRYPSIS',
+      observedNPCs:   {},
+      activeAbility:  'NONE',
+      nearbyNPC:      null,
+      isMayaHidden:   false,
+      currentTerrain: null,
+      activeMorph:    null,
+      unlockedMorphs: [],
+      morphKnowledge: {},
+    });
+    setConfirmReset(false);
+    onClose();
+  };
 
   const equipMorph = (id) => {
     setGameState(p => ({ ...p, activeMorph: id }));
@@ -104,7 +133,7 @@ export const Menu = ({ gameState, setGameState, onClose }) => {
                 Nothing carried.
               </div>
             )}
-            {(gameState.inventory || []).map((item, i) => (
+            {(gameState.inventory || []).filter(Boolean).map((item, i) => (
               <div
                 key={i}
                 style={{
@@ -119,6 +148,50 @@ export const Menu = ({ gameState, setGameState, onClose }) => {
           </div>
         </div>
 
+      </div>
+
+      {/* RESET — bottom left, two-step confirm so it can't be hit by accident */}
+      <div style={{ position: 'absolute', bottom: '60px', left: '60px' }}>
+        {!confirmReset ? (
+          <button
+            onClick={() => setConfirmReset(true)}
+            style={{
+              background: 'none', color: '#333', padding: '12px 24px',
+              border: '1px solid #222', cursor: 'pointer', fontFamily: 'serif',
+              letterSpacing: '2px', fontSize: '11px', transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#cc4444'; e.currentTarget.style.borderColor = '#cc4444'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#333';    e.currentTarget.style.borderColor = '#222'; }}
+          >
+            RESET HOUSE QUEST
+          </button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ color: '#cc4444', fontFamily: 'monospace', fontSize: 10, letterSpacing: '1px' }}>
+              ALL PROGRESS WILL BE LOST
+            </span>
+            <button
+              onClick={resetHouseQuest}
+              style={{
+                background: '#cc4444', color: '#fff', padding: '10px 20px',
+                border: 'none', cursor: 'pointer', fontFamily: 'serif',
+                letterSpacing: '2px', fontSize: '11px', fontWeight: 'bold',
+              }}
+            >
+              CONFIRM
+            </button>
+            <button
+              onClick={() => setConfirmReset(false)}
+              style={{
+                background: 'none', color: '#555', padding: '10px 16px',
+                border: '1px solid #333', cursor: 'pointer', fontFamily: 'monospace',
+                fontSize: '10px', letterSpacing: '1px',
+              }}
+            >
+              CANCEL
+            </button>
+          </div>
+        )}
       </div>
 
       <button

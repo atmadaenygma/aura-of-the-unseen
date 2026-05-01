@@ -37,6 +37,17 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
     setNpcPortraitError(false);
   }, [currentNode?.speaker]);
 
+  // Track seen facets in persistent gameState
+  useEffect(() => {
+    const facet = currentNode?.facet;
+    if (!facet) return;
+    setGameState(p => {
+      const seen = p.seenFacets || [];
+      if (seen.includes(facet)) return p;
+      return { ...p, seenFacets: [...seen, facet] };
+    });
+  }, [currentNode?.facet, setGameState]);
+
   const processChoice = (choice) => {
     // Commit current node to history before advancing
     setHistory(prev => [...prev, {
@@ -236,7 +247,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
         </div>
 
         {/* NPC — right side. Hides gracefully if no portrait exists for this speaker */}
-        <div style={{ width: '945px', flexShrink: 0, marginRight: '10%' }}>
+        <div style={{ width: '1300px', flexShrink: 0, marginRight: '10%' }}>
           {npcPortraitSrc && !npcPortraitError && (
             <img
               src={npcPortraitSrc}

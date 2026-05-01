@@ -145,12 +145,13 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
       nearbyEntityRef.current   = found;
       setNearbyEntity(found);
 
+      const updates = { nearbyEntity: found };
       if (found?.logicType === 'NPC') {
-        setGameState(p => ({ ...p, nearbyNPC: found }));
+        updates.nearbyNPC = found;
       } else if (prevId !== null) {
-        // Leaving NPC proximity — clear the nearbyNPC reference
-        setGameState(p => ({ ...p, nearbyNPC: null }));
+        updates.nearbyNPC = null;
       }
+      setGameState(p => ({ ...p, ...updates }));
     }
 
     // In debug mode: always update coords so the crosshair follows Maya continuously.
@@ -363,44 +364,6 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           );
         })}
 
-        {/* INTERACTION PROMPT — only for NPC and ARTIFACT, not HIDE (hiding is automatic) */}
-        {nearbyEntity && nearbyEntity.logicType !== 'HIDE' && nearbyEntity.name && !activeArtifact && !activeDialogue && (
-          <div style={{
-            position: 'absolute',
-            left: playerCoords.x * ZOOM,
-            top: (playerCoords.y - 180) * ZOOM,
-            transform: 'translateX(-50%)',
-            zIndex: 9999,
-            textAlign: 'center',
-          }}>
-            {gameState.pendingGive && nearbyEntity.logicType === 'NPC' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{
-                  background: '#d4af37', color: '#000', padding: '6px 14px',
-                  fontSize: 11, fontWeight: 'bold', fontFamily: 'serif',
-                  border: '1px solid #000', boxShadow: '0 10px 20px black',
-                }}>
-                  {`[E] GIVE TO ${nearbyEntity.name.toUpperCase()}`}
-                </div>
-                <div style={{
-                  background: 'rgba(0,0,0,0.8)', color: '#d4af37',
-                  padding: '4px 10px', fontSize: 9, fontFamily: 'monospace',
-                  letterSpacing: '1px', border: '1px solid rgba(212,175,55,0.3)',
-                }}>
-                  {gameState.pendingGive.name.toUpperCase()}
-                </div>
-              </div>
-            ) : (
-              <div style={{
-                background: '#d4af37', color: '#000', padding: '8px 16px',
-                fontSize: 12, fontWeight: 'bold', fontFamily: 'serif',
-                border: '1px solid #000', boxShadow: '0 10px 20px black',
-              }}>
-                {`[E] ${nearbyEntity.name.toUpperCase()}`}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {activeLoot && (

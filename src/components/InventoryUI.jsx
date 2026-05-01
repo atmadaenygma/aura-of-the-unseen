@@ -4,7 +4,22 @@ import { createPortal } from 'react-dom';
 const INV_COLS    = 4;
 const INV_ROWS    = 5;
 const TOTAL_SLOTS = INV_COLS * INV_ROWS;
-const SLOT_SIZE   = 72;
+const SLOT_SIZE   = 68;
+const GAP         = 6;
+const HUD_HEIGHT  = 48;
+
+const BG          = '#d6cab0';
+const BG_DARK     = '#c9bca0';
+const BG_SLOT     = 'rgba(58,32,16,0.07)';
+const BG_FILLED   = 'rgba(58,32,16,0.13)';
+const ACCENT      = '#cb7866';
+const TEXT        = '#3a2010';
+const TEXT_DIM    = 'rgba(58,32,16,0.45)';
+const TEXT_MID    = 'rgba(58,32,16,0.65)';
+const BORDER      = 'rgba(58,32,16,0.18)';
+const BORDER_MED  = 'rgba(58,32,16,0.3)';
+const FONT        = 'Courier New, monospace';
+const FONT_SER    = 'Georgia, serif';
 
 // ── Action popover ─────────────────────────────────────────────────────────────
 const ActionPopover = ({ item, onDrop, onUse, onInspect, onGive, onEnter, onLeave }) => (
@@ -17,52 +32,48 @@ const ActionPopover = ({ item, onDrop, onUse, onInspect, onGive, onEnter, onLeav
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 2000,
-      background: 'rgba(8,6,3,0.99)',
-      border: '1px solid rgba(212,175,55,0.25)',
-      borderRadius: 3,
+      background: BG_DARK,
+      border: `1px solid ${BORDER_MED}`,
       padding: '10px 12px',
-      width: 180,
-      boxShadow: '0 4px 24px rgba(0,0,0,0.8)',
+      width: 170,
+      boxShadow: '0 -4px 20px rgba(0,0,0,0.25)',
       pointerEvents: 'all',
     }}
   >
-    {/* Item info */}
     <div style={{ marginBottom: 8 }}>
-      <div style={{ color: '#d4af37', fontFamily: 'monospace', fontSize: 9, letterSpacing: '2px', marginBottom: 4 }}>
+      <div style={{ color: TEXT, fontFamily: FONT, fontSize: 9, letterSpacing: '2px', marginBottom: 4 }}>
         {item.name.toUpperCase()}
       </div>
       {item.description && (
-        <div style={{ color: '#444', fontFamily: 'serif', fontSize: 10, lineHeight: 1.5 }}>
+        <div style={{ color: TEXT_MID, fontFamily: FONT_SER, fontSize: 10, lineHeight: 1.5, fontStyle: 'italic' }}>
           {item.description}
         </div>
       )}
     </div>
 
-    {/* Divider */}
-    <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
+    <div style={{ height: 1, background: BORDER, margin: '8px 0' }} />
 
-    {/* Action buttons */}
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
       {[
-        { label: 'DROP',    fn: onDrop,    color: '#cc4444' },
-        { label: 'USE',     fn: onUse,     color: '#888888' },
-        { label: 'INSPECT', fn: onInspect, color: '#888888' },
-        { label: 'GIVE',    fn: onGive,    color: '#d4af37' },
+        { label: 'DROP',    fn: onDrop,    color: '#c0392b' },
+        { label: 'USE',     fn: onUse,     color: TEXT_MID  },
+        { label: 'INSPECT', fn: onInspect, color: TEXT_MID  },
+        { label: 'GIVE',    fn: onGive,    color: ACCENT    },
       ].map(({ label, fn, color }) => (
         <button
           key={label}
           onClick={(e) => { e.stopPropagation(); fn(); }}
           style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: `1px solid ${color === '#888888' ? 'rgba(255,255,255,0.08)' : `rgba(${color === '#d4af37' ? '212,175,55' : '204,68,68'},0.3)`}`,
+            background: 'transparent',
+            border: `1px solid ${BORDER}`,
             color,
-            fontFamily: 'monospace', fontSize: 9,
-            padding: '4px 8px', borderRadius: 2,
+            fontFamily: FONT, fontSize: 9,
+            padding: '4px 8px',
             cursor: 'pointer', letterSpacing: '1px',
             transition: 'all 0.1s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = `${color}18`; e.currentTarget.style.borderColor = color; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = BORDER; }}
         >
           {label}
         </button>
@@ -77,39 +88,38 @@ const InspectModal = ({ item, onClose }) => createPortal(
     onClick={onClose}
     style={{
       position: 'fixed', inset: 0, zIndex: 10100,
-      background: 'rgba(0,0,0,0.92)',
+      background: 'rgba(0,0,0,0.85)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}
   >
     <div
       onClick={e => e.stopPropagation()}
       style={{
-        background: 'rgba(8,6,3,0.99)',
-        border: '1px solid rgba(212,175,55,0.2)',
-        borderRadius: 4, padding: '32px 36px',
+        background: BG,
+        border: `2px solid ${ACCENT}`,
+        padding: '32px 36px',
         maxWidth: 360, textAlign: 'center',
-        boxShadow: '0 0 60px rgba(0,0,0,0.9)',
+        boxShadow: '0 0 60px rgba(0,0,0,0.7)',
       }}
     >
       <div style={{
         width: 80, height: 80, margin: '0 auto 20px',
-        background: 'rgba(212,175,55,0.08)',
-        border: '1px solid rgba(212,175,55,0.2)',
-        borderRadius: 4,
+        background: BG_SLOT,
+        border: `1px solid ${BORDER_MED}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {item.image
           ? <img src={item.image} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
-          : <span style={{ color: '#d4af37', fontSize: 32 }}>✦</span>
+          : <span style={{ color: ACCENT, fontSize: 32 }}>✦</span>
         }
       </div>
-      <div style={{ color: '#d4af37', fontFamily: 'serif', fontSize: 15, letterSpacing: '3px', marginBottom: 12 }}>
+      <div style={{ color: TEXT, fontFamily: FONT, fontSize: 13, letterSpacing: '3px', marginBottom: 12 }}>
         {item.name.toUpperCase()}
       </div>
-      <div style={{ color: '#666', fontFamily: 'serif', fontSize: 12, lineHeight: 1.7 }}>
+      <div style={{ color: TEXT_MID, fontFamily: FONT_SER, fontSize: 13, lineHeight: 1.7, fontStyle: 'italic' }}>
         {item.description || 'Nothing remarkable about it.'}
       </div>
-      <div style={{ marginTop: 20, color: '#333', fontFamily: 'monospace', fontSize: 9, letterSpacing: '2px' }}>
+      <div style={{ marginTop: 20, color: TEXT_DIM, fontFamily: FONT, fontSize: 9, letterSpacing: '2px' }}>
         CLICK TO CLOSE
       </div>
     </div>
@@ -135,35 +145,33 @@ const Slot = ({
       onMouseUp={onMouseUp}
       style={{
         width: '100%', height: '100%',
-        border: `1px solid ${isDropTarget ? '#d4af37' : item ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'}`,
-        borderRadius: 3,
+        border: `1px solid ${isDropTarget ? ACCENT : item ? BORDER_MED : BORDER}`,
         background: isDropTarget
-          ? 'rgba(212,175,55,0.08)'
-          : item ? 'rgba(20,14,8,0.95)' : 'rgba(0,0,0,0.25)',
+          ? `${ACCENT}18`
+          : item ? BG_FILLED : BG_SLOT,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 4,
         cursor: item ? 'grab' : 'default',
-        opacity: faded ? 0.2 : 1,
+        opacity: faded ? 0.25 : 1,
         transition: 'border-color 0.15s, background 0.15s, opacity 0.2s',
         userSelect: 'none', boxSizing: 'border-box',
       }}
     >
       {item && (<>
         <div style={{
-          width: 38, height: 38,
-          background: 'rgba(212,175,55,0.1)',
-          border: '1px solid rgba(212,175,55,0.2)',
-          borderRadius: 2,
+          width: 36, height: 36,
+          background: `${ACCENT}18`,
+          border: `1px solid ${ACCENT}44`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
           {item.image
             ? <img src={item.image} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
-            : <span style={{ color: '#d4af37', fontSize: 16 }}>✦</span>
+            : <span style={{ color: ACCENT, fontSize: 15 }}>✦</span>
           }
         </div>
         <span style={{
-          color: '#888', fontSize: 7, fontFamily: 'monospace',
+          color: TEXT_MID, fontSize: 7, fontFamily: FONT,
           textAlign: 'center', letterSpacing: '0.4px', lineHeight: 1.3,
           maxWidth: SLOT_SIZE - 8, overflow: 'hidden',
         }}>
@@ -186,25 +194,15 @@ const Slot = ({
   </div>
 );
 
-// ── InventoryUI ────────────────────────────────────────────────────────────────
+// ── Satchel Popover ────────────────────────────────────────────────────────────
 export const InventoryUI = ({ gameState, setGameState, onClose }) => {
   const inventory = gameState.inventory || [];
 
-  const [drag,          setDrag]          = useState(null);
-  const [dropTarget,    setDropTarget]    = useState(null);
-  const [hoveredSlot,   setHoveredSlot]   = useState(null);
-  const [inspectItem,   setInspectItem]   = useState(null);
-  const hoverTimer      = useRef(null);
-
-  // Esc or [I] closes (unless inspect modal is open)
-  useEffect(() => {
-    const fn = (e) => {
-      if (inspectItem) return; // let InspectModal handle it
-      if (e.key === 'Escape' || e.key.toLowerCase() === 'i') onClose();
-    };
-    window.addEventListener('keydown', fn);
-    return () => window.removeEventListener('keydown', fn);
-  }, [onClose, inspectItem]);
+  const [drag,        setDrag]        = useState(null);
+  const [dropTarget,  setDropTarget]  = useState(null);
+  const [hoveredSlot, setHoveredSlot] = useState(null);
+  const [inspectItem, setInspectItem] = useState(null);
+  const hoverTimer = useRef(null);
 
   // Global mouse tracking during drag
   useEffect(() => {
@@ -219,16 +217,10 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
     };
   }, [!!drag]);
 
-  const showPopover = (i) => {
-    clearTimeout(hoverTimer.current);
-    if (!drag) setHoveredSlot(i);
-  };
-  const hidePopover = () => {
-    hoverTimer.current = setTimeout(() => setHoveredSlot(null), 180);
-  };
-  const keepPopover = () => clearTimeout(hoverTimer.current);
+  const showPopoverFor = (i) => { clearTimeout(hoverTimer.current); if (!drag) setHoveredSlot(i); };
+  const hidePopover    = ()  => { hoverTimer.current = setTimeout(() => setHoveredSlot(null), 180); };
+  const keepPopover    = ()  => clearTimeout(hoverTimer.current);
 
-  // Move item between slots
   const dropIntoSlot = (toIndex) => {
     if (!drag) return;
     if (drag.fromIndex === toIndex) { setDrag(null); setDropTarget(null); return; }
@@ -238,7 +230,6 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
     setDrag(null); setDropTarget(null);
   };
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
   const dropItem = (slotIndex) => {
     const newInv = Array.from({ length: TOTAL_SLOTS }, (_, i) => inventory[i] ?? null);
     newInv[slotIndex] = null;
@@ -253,106 +244,94 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
 
   const grid      = Array.from({ length: TOTAL_SLOTS }, (_, i) => inventory[i] ?? null);
   const itemCount = grid.filter(Boolean).length;
+  const gridWidth = INV_COLS * (SLOT_SIZE + GAP) - GAP;
 
-  return createPortal(
+  return (
     <>
       <div style={{
-        position: 'fixed', inset: 0, zIndex: 10000,
-        background: 'rgba(0,0,0,0.88)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'absolute',
+        bottom: HUD_HEIGHT,
+        right: 0,
+        background: BG,
+        borderTop: `2px solid ${ACCENT}`,
+        borderLeft: `1px solid ${BORDER_MED}`,
+        borderRight: `1px solid ${BORDER_MED}`,
+        boxShadow: '4px -8px 40px rgba(0,0,0,0.4)',
+        zIndex: 9100,
+        padding: '18px 20px 20px',
       }}>
+        {/* Header */}
         <div style={{
-          position: 'relative',
-          background: 'rgba(8,6,3,0.99)',
-          border: '1px solid rgba(212,175,55,0.18)',
-          borderRadius: 4,
-          padding: '24px 24px 24px',
-          boxShadow: '0 0 80px rgba(0,0,0,0.9)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          marginBottom: 14, paddingBottom: 10,
+          borderBottom: `1px solid ${BORDER}`,
         }}>
-          {/* Header */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ color: '#d4af37', fontFamily: 'serif', fontSize: 13, letterSpacing: '4px' }}>
-              SATCHEL
-            </div>
-            <div style={{ color: '#333', fontFamily: 'monospace', fontSize: 9, letterSpacing: '2px', marginTop: 5 }}>
-              {itemCount} / {TOTAL_SLOTS} CARRIED
-            </div>
-          </div>
-
-          {/* Grid */}
-          <div style={{
-            display: 'flex', flexWrap: 'wrap', gap: 8,
-            width: INV_COLS * (SLOT_SIZE + 8) - 8,
-            overflow: 'visible',
-          }}>
-            {grid.map((item, i) => (
-              <Slot
-                key={i}
-                item={item}
-                faded={drag?.fromIndex === i}
-                isDropTarget={!!drag && dropTarget === i && drag.fromIndex !== i}
-                showPopover={hoveredSlot === i && !drag}
-                onSlotEnter={() => showPopover(i)}
-                onSlotLeave={hidePopover}
-                onPopoverEnter={keepPopover}
-                onPopoverLeave={hidePopover}
-                onMouseDown={item ? (e) => {
-                  e.preventDefault();
-                  setHoveredSlot(null);
-                  setDrag({ item, fromIndex: i, x: e.clientX, y: e.clientY });
-                } : undefined}
-                onMouseUp={(e) => { e.stopPropagation(); dropIntoSlot(i); }}
-                onMouseEnterSlot={() => { if (drag) setDropTarget(i); }}
-                onMouseLeaveSlot={() => setDropTarget(null)}
-                onDrop={() => dropItem(i)}
-                onUse={() => { /* TODO: use item effects */ }}
-                onInspect={() => { setHoveredSlot(null); setInspectItem(item); }}
-                onGive={() => giveItem(item)}
-              />
-            ))}
-          </div>
-
-          {/* Close */}
-          <button
-            onClick={onClose}
-            style={{
-              position: 'absolute', top: 10, right: 12,
-              background: 'none', border: 'none',
-              color: '#333', fontFamily: 'monospace', fontSize: 16,
-              cursor: 'pointer', padding: '4px 8px', transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.color = '#d4af37'}
-            onMouseLeave={e => e.currentTarget.style.color = '#333'}
-          >✕</button>
+          <span style={{ color: TEXT, fontFamily: FONT, fontSize: 11, letterSpacing: '3px' }}>
+            SATCHEL
+          </span>
+          <span style={{ color: TEXT_DIM, fontFamily: FONT, fontSize: 8, letterSpacing: '2px' }}>
+            {itemCount} / {TOTAL_SLOTS}
+          </span>
         </div>
 
-        {/* Floating drag ghost */}
-        {drag && (
-          <div style={{
-            position: 'fixed',
-            left: drag.x - 36, top: drag.y - 36,
-            pointerEvents: 'none', zIndex: 10001,
-            opacity: 0.8, transform: 'scale(1.05)',
-          }}>
-            <div style={{
-              width: SLOT_SIZE, height: SLOT_SIZE,
-              border: '1px solid rgba(212,175,55,0.4)',
-              borderRadius: 3, background: 'rgba(20,14,8,0.95)',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 4,
-            }}>
-              <span style={{ color: '#d4af37', fontSize: 16 }}>✦</span>
-              <span style={{ color: '#888', fontSize: 7, fontFamily: 'monospace' }}>{drag.item.name}</span>
-            </div>
-          </div>
-        )}
+        {/* Grid */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: GAP,
+          width: gridWidth,
+          overflow: 'visible',
+        }}>
+          {grid.map((item, i) => (
+            <Slot
+              key={i}
+              item={item}
+              faded={drag?.fromIndex === i}
+              isDropTarget={!!drag && dropTarget === i && drag.fromIndex !== i}
+              showPopover={hoveredSlot === i && !drag}
+              onSlotEnter={() => { showPopoverFor(i); if (drag) setDropTarget(i); }}
+              onSlotLeave={() => { hidePopover(); setDropTarget(null); }}
+              onPopoverEnter={keepPopover}
+              onPopoverLeave={hidePopover}
+              onMouseDown={item ? (e) => {
+                e.preventDefault();
+                setHoveredSlot(null);
+                setDrag({ item, fromIndex: i, x: e.clientX, y: e.clientY });
+              } : undefined}
+              onMouseUp={(e) => { e.stopPropagation(); dropIntoSlot(i); }}
+              onDrop={() => dropItem(i)}
+              onUse={() => { /* TODO */ }}
+              onInspect={() => { setHoveredSlot(null); setInspectItem(item); }}
+              onGive={() => giveItem(item)}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Inspect modal — rendered outside the backdrop */}
+      {/* Drag ghost — needs to float above everything */}
+      {drag && createPortal(
+        <div style={{
+          position: 'fixed',
+          left: drag.x - SLOT_SIZE / 2, top: drag.y - SLOT_SIZE / 2,
+          pointerEvents: 'none', zIndex: 10001,
+          opacity: 0.85, transform: 'scale(1.06)',
+        }}>
+          <div style={{
+            width: SLOT_SIZE, height: SLOT_SIZE,
+            border: `1px solid ${ACCENT}`,
+            background: BG_DARK,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 4,
+          }}>
+            <span style={{ color: ACCENT, fontSize: 15 }}>✦</span>
+            <span style={{ color: TEXT_MID, fontSize: 7, fontFamily: FONT }}>{drag.item.name}</span>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Inspect modal */}
       {inspectItem && (
         <InspectModal item={inspectItem} onClose={() => setInspectItem(null)} />
       )}
-    </>,
-    document.body
+    </>
   );
 };

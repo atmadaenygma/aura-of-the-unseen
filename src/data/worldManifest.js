@@ -41,10 +41,12 @@ export const WORLD_MANIFEST = {
         ]
       },
       small_lamp_stand: {
-        id: "small_lamp_stand", name: "Small Lamp Stand", type: "READ",
+        id: "small_lamp_stand", name: "Small Lamp Stand", type: "CONTAINER",
         x: 781, y: 331, radius: 40,
-        text: "",
-        impact: 0
+        loot: [
+          { id: "matches",      name: "Box of Matches",   description: "Half-empty. The sulphur tips are still dry." },
+          { id: "lamp_wick",    name: "Spare Wick",       description: "Rolled cotton, trimmed clean. Someone kept this place maintained." },
+        ]
       },
       dresser_2: {
         id: "dresser_2", name: "Dresser", type: "CONTAINER",

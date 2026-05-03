@@ -19,7 +19,7 @@ const onKey = (e) => {
         setGameState(prev => ({
           ...prev,
           money: prev.money + (entity.rewardMoney || 0),
-          integrity: Math.max(0, prev.integrity + entity.impact)
+          morphStability: Math.max(0, prev.morphStability + entity.impact)
         }));
       }
     }

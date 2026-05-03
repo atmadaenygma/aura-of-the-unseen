@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
+import { useTextScale } from '../context/TextScaleContext';
 import { QUEST_REGISTRY } from '../data/quests';
-import { FACET_REGISTRY } from '../data/facets';
+import {
+  ABILITIES_REGISTRY,
+  REVELATIONS_REGISTRY,
+  PEOPLE_REGISTRY,
+  PLACES_REGISTRY,
+  THINGS_REGISTRY,
+} from '../data/cognitions';
 
 const HUD_HEIGHT = 48;
 const BG         = '#d6cab0';
@@ -158,57 +165,111 @@ const EchoesTab = ({ gameState }) => {
 };
 
 // ── COGNITIONS ────────────────────────────────────────────────────────────────
-const CognitionsTab = ({ gameState }) => {
+
+const COG_TABS = ['ABILITIES', 'REVELATIONS', 'PEOPLE', 'PLACES', 'THINGS'];
+
+// Sidebar button shared across all sub-tabs
+const CogSidebarBtn = ({ label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    style={{
+      background: active ? ACCENT : 'transparent',
+      border: `1px solid ${active ? ACCENT : BORDER_MED}`,
+      color: active ? '#fff' : TEXT_MID,
+      fontFamily: FONT, fontSize: 8, letterSpacing: '2px',
+      textTransform: 'uppercase', padding: '10px 12px',
+      textAlign: 'left', cursor: 'pointer', width: '100%',
+      transition: 'all 0.15s',
+    }}
+  >
+    {label}
+  </button>
+);
+
+// Knowledge tier renderer — shows unlocked tiers, dims locked ones
+const KnowledgeTiers = ({ tiers, level }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    {tiers.map((tier, i) => {
+      const unlocked = level >= tier.level;
+      return (
+        <div key={i} style={{ position: 'relative' }}>
+          {tier.level > 0 && (
+            <div style={{
+              fontFamily: FONT, fontSize: 7, letterSpacing: '2px',
+              color: unlocked ? ACCENT : TEXT_DIM,
+              textTransform: 'uppercase', marginBottom: 5,
+            }}>
+              {unlocked ? `— LEVEL ${tier.level} KNOWLEDGE UNLOCKED` : `— LEVEL ${tier.level} REQUIRED`}
+            </div>
+          )}
+          <div style={{
+            fontFamily: FONT_SER, fontSize: 14, color: unlocked ? TEXT : TEXT_DIM,
+            lineHeight: 1.8, fontStyle: 'italic',
+            filter: unlocked ? 'none' : 'blur(3px)',
+            userSelect: unlocked ? 'auto' : 'none',
+            transition: 'filter 0.3s, color 0.3s',
+          }}>
+            {tier.content}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
+
+// Detail panel shared by REVELATIONS / PEOPLE / PLACES / THINGS
+const CogDetailPanel = ({ entry, level }) => (
+  <div style={{ flex: 1, minWidth: 0 }}>
+    {entry.image && (
+      <div style={{ background: BG_INSET, padding: 4, marginBottom: 14, border: `1px solid ${BORDER}` }}>
+        <img
+          src={entry.image}
+          style={{ width: '100%', height: 'auto', display: 'block', opacity: 0.9 }}
+          alt={entry.name}
+          onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+        />
+      </div>
+    )}
+    <div style={{
+      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+      marginBottom: 14,
+    }}>
+      <div style={{ fontFamily: FONT, fontSize: 10, letterSpacing: '3px', color: ACCENT, textTransform: 'uppercase' }}>
+        {entry.name}
+      </div>
+      <div style={{ fontFamily: FONT, fontSize: 8, letterSpacing: '1px', color: TEXT_DIM }}>
+        KNOWLEDGE {level}
+      </div>
+    </div>
+    <KnowledgeTiers tiers={entry.tiers} level={level} />
+  </div>
+);
+
+// ── ABILITIES sub-tab ──────────────────────────────────────────────────────────
+const AbilitiesPane = ({ gameState }) => {
   const seen     = gameState.seenFacets || [];
-  const unlocked = seen.map((id) => FACET_REGISTRY[id]).filter(Boolean);
+  const unlocked = seen.map((id) => ABILITIES_REGISTRY[id]).filter(Boolean);
   const [selected, setSelected] = useState(unlocked[0]?.id || null);
+  const active = selected ? ABILITIES_REGISTRY[selected] : null;
 
   if (unlocked.length === 0) {
     return (
       <div style={{ color: TEXT_DIM, fontFamily: FONT_SER, fontStyle: 'italic', fontSize: 14, paddingTop: 12 }}>
-        No cognitions surfaced. Engage with the world.
+        No abilities surfaced yet. Engage with the world.
       </div>
     );
   }
 
-  const active = selected ? FACET_REGISTRY[selected] : null;
-
   return (
     <div style={{ display: 'flex', gap: 20, minHeight: 0 }}>
-
-      {/* Sidebar */}
-      <div style={{ width: 160, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {unlocked.map((facet) => {
-          const isActive = selected === facet.id;
-          return (
-            <button
-              key={facet.id}
-              onClick={() => setSelected(facet.id)}
-              style={{
-                background: isActive ? ACCENT : 'transparent',
-                border: `1px solid ${isActive ? ACCENT : BORDER_MED}`,
-                color: isActive ? '#fff' : TEXT_MID,
-                fontFamily: FONT, fontSize: 8, letterSpacing: '2px',
-                textTransform: 'uppercase', padding: '10px 12px',
-                textAlign: 'left', cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              {facet.name}
-            </button>
-          );
-        })}
+      <div style={{ width: 150, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {unlocked.map((f) => (
+          <CogSidebarBtn key={f.id} label={f.name} active={selected === f.id} onClick={() => setSelected(f.id)} />
+        ))}
       </div>
-
-      {/* Detail */}
       {active && (
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            background: BG_INSET,
-            padding: '4px',
-            marginBottom: 14,
-            border: `1px solid ${BORDER}`,
-          }}>
+          <div style={{ background: BG_INSET, padding: 4, marginBottom: 14, border: `1px solid ${BORDER}` }}>
             <img
               src={`/ui/concious_thoughts/${active.id}.png`}
               style={{ width: '100%', height: 'auto', display: 'block', opacity: 0.9 }}
@@ -216,16 +277,10 @@ const CognitionsTab = ({ gameState }) => {
               onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
             />
           </div>
-          <div style={{
-            fontFamily: FONT, fontSize: 10, letterSpacing: '3px',
-            color: ACCENT, textTransform: 'uppercase', marginBottom: 10,
-          }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, letterSpacing: '3px', color: ACCENT, textTransform: 'uppercase', marginBottom: 10 }}>
             {active.name}
           </div>
-          <div style={{
-            fontFamily: FONT_SER, fontSize: 14, color: TEXT,
-            lineHeight: 1.8, fontStyle: 'italic',
-          }}>
+          <div style={{ fontFamily: FONT_SER, fontSize: 14, color: TEXT, lineHeight: 1.8, fontStyle: 'italic' }}>
             {active.description}
           </div>
         </div>
@@ -234,18 +289,123 @@ const CognitionsTab = ({ gameState }) => {
   );
 };
 
+// ── Generic knowledge pane (Revelations / People / Places / Things) ────────────
+const KnowledgePane = ({ registry, gameState, emptyText }) => {
+  const knowledge = gameState.knowledge || {};
+
+  // Show an entry if knowledge[id] > 0 OR if it has an unlockFlag set in flags
+  const visible = Object.values(registry).filter((entry) => {
+    if (entry.unlockFlag && gameState.flags?.[entry.unlockFlag]) return true;
+    return (knowledge[entry.id] || 0) > 0;
+  });
+
+  const [selected, setSelected] = useState(visible[0]?.id || null);
+  const active = selected ? registry[selected] : null;
+  const level  = active ? (knowledge[active.id] || 0) : 0;
+
+  if (visible.length === 0) {
+    return (
+      <div style={{ color: TEXT_DIM, fontFamily: FONT_SER, fontStyle: 'italic', fontSize: 14, paddingTop: 12 }}>
+        {emptyText}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 20, minHeight: 0 }}>
+      <div style={{ width: 150, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {visible.map((entry) => (
+          <CogSidebarBtn
+            key={entry.id}
+            label={entry.name}
+            active={selected === entry.id}
+            onClick={() => setSelected(entry.id)}
+          />
+        ))}
+      </div>
+      {active && <CogDetailPanel entry={active} level={level} />}
+    </div>
+  );
+};
+
+// ── CognitionsTab ──────────────────────────────────────────────────────────────
+const CognitionsTab = ({ gameState }) => {
+  const [subTab, setSubTab] = useState('ABILITIES');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0 }}>
+
+      {/* Sub-tab row */}
+      <div style={{
+        display: 'flex', gap: 0,
+        borderBottom: `1px solid ${BORDER}`,
+        marginBottom: 20,
+      }}>
+        {COG_TABS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setSubTab(t)}
+            style={{
+              background: 'none', border: 'none',
+              borderBottom: subTab === t ? `2px solid ${ACCENT}` : '2px solid transparent',
+              color: subTab === t ? ACCENT : TEXT_DIM,
+              fontFamily: FONT, fontSize: 8, letterSpacing: '2.5px',
+              textTransform: 'uppercase',
+              padding: '0 16px 10px 0',
+              marginBottom: -1,
+              cursor: 'pointer',
+              transition: 'color 0.15s, border-color 0.15s',
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* Pane content */}
+      {subTab === 'ABILITIES'   && <AbilitiesPane gameState={gameState} />}
+      {subTab === 'REVELATIONS' && (
+        <KnowledgePane
+          registry={REVELATIONS_REGISTRY}
+          gameState={gameState}
+          emptyText="Nothing has been revealed yet. Look closer at the world around you."
+        />
+      )}
+      {subTab === 'PEOPLE' && (
+        <KnowledgePane
+          registry={PEOPLE_REGISTRY}
+          gameState={gameState}
+          emptyText="No one has made an impression yet. Speak with those you encounter."
+        />
+      )}
+      {subTab === 'PLACES' && (
+        <KnowledgePane
+          registry={PLACES_REGISTRY}
+          gameState={gameState}
+          emptyText="No places recorded. Explore further."
+        />
+      )}
+      {subTab === 'THINGS' && (
+        <KnowledgePane
+          registry={THINGS_REGISTRY}
+          gameState={gameState}
+          emptyText="Nothing of note collected. Handle objects with attention."
+        />
+      )}
+    </div>
+  );
+};
+
 // ── Journal Popover ───────────────────────────────────────────────────────────
 export const Journal = ({ gameState }) => {
   const [activeTab, setActiveTab] = useState('OBLIGATIONS');
+  const zoom = useTextScale();
 
   const TABS = ['OBLIGATIONS', 'ECHOES', 'COGNITIONS'];
 
   return (
     <div
       style={{
-        position: 'absolute',
-        bottom: HUD_HEIGHT,
-        left: 0,
         width: 700,
         maxHeight: 600,
         background: BG,
@@ -253,9 +413,9 @@ export const Journal = ({ gameState }) => {
         borderRight: `1px solid ${BORDER_MED}`,
         borderLeft: `1px solid ${BORDER_MED}`,
         boxShadow: '4px -8px 48px rgba(0,0,0,0.45)',
-        zIndex: 9100,
         display: 'flex',
         flexDirection: 'column',
+        zoom,
       }}
     >
       {/* Tab row */}
@@ -277,9 +437,9 @@ export const Journal = ({ gameState }) => {
         className="journal-scroll"
         style={{ flex: 1, overflowY: 'auto', padding: '24px 28px 32px' }}
       >
-        {activeTab === 'OBLIGATIONS' && <ObligationsTab gameState={gameState} />}
-        {activeTab === 'ECHOES'      && <EchoesTab      gameState={gameState} />}
-        {activeTab === 'COGNITIONS'  && <CognitionsTab  gameState={gameState} />}
+          {activeTab === 'OBLIGATIONS' && <ObligationsTab gameState={gameState} />}
+          {activeTab === 'ECHOES'      && <EchoesTab      gameState={gameState} />}
+          {activeTab === 'COGNITIONS'  && <CognitionsTab  gameState={gameState} />}
       </div>
 
       <style>{`

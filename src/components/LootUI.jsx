@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTextScale } from '../context/TextScaleContext';
 
 const REVEAL_DELAY_MS = 1600; // ms between each item appearing
 const MAX_INVENTORY   = 20;   // total satchel slots
 const INV_COLS        = 4;
 const INV_ROWS        = 5;
+
+// ── Palette (matches HUD) ─────────────────────────────────────────────────────
+const L_BG      = '#d6cab0';
+const L_ACCENT  = '#cb7866';
+const L_TEXT    = '#3a2010';
+const L_BORDER  = 'rgba(58,32,16,0.2)';
+const L_FONT    = 'Courier New, monospace';
 
 // ── Single item slot ──────────────────────────────────────────────────────────
 const Slot = ({ item, revealed, faded, isDropTarget, onMouseDown, onMouseEnter, onMouseLeave, onMouseUp, size = 72 }) => {
@@ -19,15 +27,15 @@ const Slot = ({ item, revealed, faded, isDropTarget, onMouseDown, onMouseEnter, 
       onMouseUp={onMouseUp}
       style={{
         width: size, height: size,
-        border: `1px solid ${isDropTarget ? '#d4af37' : empty ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)'}`,
+        border: `1px solid ${isDropTarget ? L_ACCENT : empty ? 'rgba(58,32,16,0.12)' : L_BORDER}`,
         borderRadius: 3,
         background: isDropTarget
-          ? 'rgba(212,175,55,0.08)'
+          ? 'rgba(203,120,102,0.15)'
           : empty
-            ? 'rgba(0,0,0,0.25)'
+            ? 'rgba(58,32,16,0.05)'
             : unknown
-              ? 'rgba(0,0,0,0.65)'
-              : 'rgba(20,14,8,0.95)',
+              ? 'rgba(58,32,16,0.12)'
+              : 'rgba(58,32,16,0.08)',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 4,
         cursor: item && revealed ? 'grab' : 'default',
@@ -40,26 +48,26 @@ const Slot = ({ item, revealed, faded, isDropTarget, onMouseDown, onMouseEnter, 
     >
       {unknown && (
         <span style={{
-          color: '#2a2a2a', fontSize: 20, fontFamily: 'serif',
+          color: 'rgba(58,32,16,0.3)', fontSize: 20, fontFamily: 'serif',
           animation: 'pulse 2s ease-in-out infinite',
         }}>?</span>
       )}
       {item && revealed && (<>
         <div style={{
           width: 38, height: 38,
-          background: 'rgba(212,175,55,0.1)',
-          border: '1px solid rgba(212,175,55,0.2)',
+          background: 'rgba(58,32,16,0.06)',
+          border: `1px solid ${L_BORDER}`,
           borderRadius: 2,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
           {item.image
             ? <img src={item.image} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
-            : <span style={{ color: '#d4af37', fontSize: 16 }}>✦</span>
+            : <span style={{ color: L_ACCENT, fontSize: 16 }}>✦</span>
           }
         </div>
         <span style={{
-          color: '#888', fontSize: 7, fontFamily: 'monospace',
+          color: 'rgba(58,32,16,0.55)', fontSize: 7, fontFamily: L_FONT,
           textAlign: 'center', letterSpacing: '0.4px', lineHeight: 1.3,
           maxWidth: size - 8, overflow: 'hidden',
         }}>
@@ -72,6 +80,7 @@ const Slot = ({ item, revealed, faded, isDropTarget, onMouseDown, onMouseEnter, 
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export const LootUI = ({ container, gameState, setGameState, onClose }) => {
+  const zoom      = useTextScale();
   const loot      = container.loot || [];
   const inventory = gameState.inventory || [];
   const takenSet  = new Set(gameState.containers?.[container.id] || []);
@@ -152,17 +161,18 @@ export const LootUI = ({ container, gameState, setGameState, onClose }) => {
 
       <div style={{
         position: 'fixed', inset: 0, zIndex: 10000,
-        background: 'rgba(0,0,0,0.88)',
+        background: 'rgba(58,32,16,0.6)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <div style={{
           position: 'relative',
           display: 'flex', gap: 0,
-          background: 'rgba(8,6,3,0.99)',
-          border: '1px solid rgba(212,175,55,0.18)',
+          background: L_BG,
+          border: `1px solid ${L_BORDER}`,
           borderRadius: 4,
-          boxShadow: '0 0 80px rgba(0,0,0,0.9)',
+          boxShadow: '0 8px 60px rgba(58,32,16,0.5)',
           overflow: 'hidden',
+          zoom,
         }}>
 
           {/* ── LEFT PANEL — Container ──────────────────────────────────── */}
@@ -170,10 +180,10 @@ export const LootUI = ({ container, gameState, setGameState, onClose }) => {
 
             {/* Header */}
             <div style={{ marginBottom: 18 }}>
-              <div style={{ color: '#d4af37', fontFamily: 'serif', fontSize: 13, letterSpacing: '4px' }}>
+              <div style={{ color: L_TEXT, fontFamily: L_FONT, fontSize: 13, letterSpacing: '4px', fontWeight: 900, textTransform: 'uppercase' }}>
                 {container.name.toUpperCase()}
               </div>
-              <div style={{ color: '#333', fontFamily: 'monospace', fontSize: 9, letterSpacing: '2px', marginTop: 5 }}>
+              <div style={{ color: 'rgba(58,32,16,0.45)', fontFamily: L_FONT, fontSize: 9, letterSpacing: '2px', marginTop: 5 }}>
                 {!allRevealed
                   ? 'SEARCHING\u2026'
                   : visibleLoot.length === 0
@@ -185,7 +195,7 @@ export const LootUI = ({ container, gameState, setGameState, onClose }) => {
 
             {/* Loot grid */}
             {visibleLoot.length === 0 && allRevealed ? (
-              <div style={{ color: '#222', fontFamily: 'monospace', fontSize: 10, paddingTop: 12 }}>
+              <div style={{ color: 'rgba(58,32,16,0.3)', fontFamily: L_FONT, fontSize: 10, paddingTop: 12 }}>
                 — EMPTY —
               </div>
             ) : (
@@ -213,17 +223,17 @@ export const LootUI = ({ container, gameState, setGameState, onClose }) => {
           </div>
 
           {/* ── DIVIDER ──────────────────────────────────────────────────── */}
-          <div style={{ width: 1, background: 'rgba(212,175,55,0.08)', alignSelf: 'stretch' }} />
+          <div style={{ width: 1, background: L_BORDER, alignSelf: 'stretch' }} />
 
           {/* ── RIGHT PANEL — Satchel ────────────────────────────────────── */}
           <div style={{ width: 280, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
 
             {/* Header */}
             <div style={{ marginBottom: 18 }}>
-              <div style={{ color: '#d4af37', fontFamily: 'serif', fontSize: 13, letterSpacing: '4px' }}>
+              <div style={{ color: L_TEXT, fontFamily: L_FONT, fontSize: 13, letterSpacing: '4px', fontWeight: 900, textTransform: 'uppercase' }}>
                 SATCHEL
               </div>
-              <div style={{ color: '#333', fontFamily: 'monospace', fontSize: 9, letterSpacing: '2px', marginTop: 5 }}>
+              <div style={{ color: 'rgba(58,32,16,0.45)', fontFamily: L_FONT, fontSize: 9, letterSpacing: '2px', marginTop: 5 }}>
                 {inventory.filter(Boolean).length} / {MAX_INVENTORY} CARRIED
               </div>
             </div>
@@ -250,29 +260,29 @@ export const LootUI = ({ container, gameState, setGameState, onClose }) => {
             style={{
               position: 'absolute', top: 10, right: 12,
               background: 'none', border: 'none',
-              color: '#333', fontFamily: 'monospace', fontSize: 16,
+              color: 'rgba(58,32,16,0.4)', fontFamily: L_FONT, fontSize: 16,
               cursor: 'pointer', padding: '4px 8px',
               transition: 'color 0.15s',
             }}
-            onMouseEnter={e => e.currentTarget.style.color = '#d4af37'}
-            onMouseLeave={e => e.currentTarget.style.color = '#333'}
+            onMouseEnter={e => e.currentTarget.style.color = L_ACCENT}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(58,32,16,0.4)'}
           >✕</button>
 
           {/* ── TOOLTIP ──────────────────────────────────────────────────── */}
           {tooltip && !drag && (
             <div style={{
               position: 'absolute', bottom: 0, left: 0, right: 0,
-              background: 'rgba(0,0,0,0.95)',
-              borderTop: '1px solid rgba(212,175,55,0.1)',
+              background: 'rgba(214,202,176,0.97)',
+              borderTop: `1px solid ${L_BORDER}`,
               padding: '10px 20px',
               fontFamily: 'serif', fontSize: 11,
-              color: '#888', letterSpacing: '0.5px', lineHeight: 1.6,
+              color: L_TEXT, letterSpacing: '0.5px', lineHeight: 1.6,
             }}>
-              <span style={{ color: '#d4af37', fontSize: 10, letterSpacing: '2px', fontFamily: 'monospace' }}>
+              <span style={{ color: L_TEXT, fontSize: 10, letterSpacing: '2px', fontFamily: L_FONT, fontWeight: 900 }}>
                 {tooltip.name.toUpperCase()}
               </span>
               {tooltip.description && (
-                <div style={{ marginTop: 3, color: '#555' }}>{tooltip.description}</div>
+                <div style={{ marginTop: 3, color: 'rgba(58,32,16,0.65)' }}>{tooltip.description}</div>
               )}
             </div>
           )}

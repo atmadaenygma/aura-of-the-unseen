@@ -5,7 +5,7 @@ export const useGameState = () => {
   const [state, setState] = useState(() => {
     const saved = loadGame();
     return saved || {
-      integrity: 100,
+      morphStability: 100,
       vigor: 100,
       money: 0.00,
       inventory: [],

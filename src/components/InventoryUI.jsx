@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTextScale } from '../context/TextScaleContext';
 
 const INV_COLS    = 4;
 const INV_ROWS    = 5;
@@ -242,6 +243,7 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
     onClose();
   };
 
+  const zoom      = useTextScale();
   const grid      = Array.from({ length: TOTAL_SLOTS }, (_, i) => inventory[i] ?? null);
   const itemCount = grid.filter(Boolean).length;
   const gridWidth = INV_COLS * (SLOT_SIZE + GAP) - GAP;
@@ -249,16 +251,13 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
   return (
     <>
       <div style={{
-        position: 'absolute',
-        bottom: HUD_HEIGHT,
-        right: 0,
         background: BG,
         borderTop: `2px solid ${ACCENT}`,
         borderLeft: `1px solid ${BORDER_MED}`,
         borderRight: `1px solid ${BORDER_MED}`,
         boxShadow: '4px -8px 40px rgba(0,0,0,0.4)',
-        zIndex: 9100,
         padding: '18px 20px 20px',
+        zoom,
       }}>
         {/* Header */}
         <div style={{

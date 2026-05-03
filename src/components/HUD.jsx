@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { saveGame } from '../utils/persistence';
+import { saveGame, loadGame } from '../utils/persistence';
 import { Journal } from './Journal';
 import { InventoryUI } from './InventoryUI';
+import { StatusPanel } from './StatusPanel';
+import { useTextScale } from '../context/TextScaleContext';
 
 const HUD_BG     = '#d6cab0';
 const HUD_HOVER  = '#cb7866';
@@ -22,11 +24,13 @@ const useHover = () => {
 };
 
 // ── HUD button ─────────────────────────────────────────────────────────────────
-const HudButton = ({ children, onClick, active = false, style = {} }) => {
+const HudButton = React.forwardRef(({ children, onClick, active = false, style = {} }, ref) => {
   const { hovered, bind } = useHover();
+  const zoom = useTextScale();
   const lit = hovered || active;
   return (
     <button
+      ref={ref}
       onClick={onClick}
       {...bind}
       style={{
@@ -37,7 +41,7 @@ const HudButton = ({ children, onClick, active = false, style = {} }) => {
         border: 'none',
         borderRight: `1px solid rgba(58,32,16,0.18)`,
         fontFamily: FONT,
-        fontSize: 11,
+        fontSize: `${11 * zoom}px`,
         letterSpacing: '2px',
         textTransform: 'uppercase',
         cursor: 'pointer',
@@ -50,29 +54,31 @@ const HudButton = ({ children, onClick, active = false, style = {} }) => {
       {children}
     </button>
   );
-};
+});
 
 // ── Popup item ─────────────────────────────────────────────────────────────────
-const PopupItem = ({ label, onClick, danger = false }) => {
+const PopupItem = ({ label, onClick, danger = false, muted = false }) => {
   const { hovered, bind } = useHover();
+  const zoom = useTextScale();
+  const disabled = muted;
   return (
     <button
-      onClick={onClick}
-      {...bind}
+      onClick={disabled ? undefined : onClick}
+      {...(disabled ? {} : bind)}
       style={{
         display: 'block',
         width: '100%',
         padding: '11px 20px',
-        background: hovered ? HUD_HOVER : 'transparent',
-        color: hovered ? '#fff' : danger ? HUD_HOVER : HUD_TEXT,
+        background: !disabled && hovered ? HUD_HOVER : 'transparent',
+        color: disabled ? 'rgba(58,32,16,0.25)' : hovered ? '#fff' : danger ? HUD_HOVER : HUD_TEXT,
         border: 'none',
         borderTop: `1px solid rgba(58,32,16,0.12)`,
         fontFamily: FONT,
-        fontSize: 11,
+        fontSize: `${11 * zoom}px`,
         letterSpacing: '2px',
         textTransform: 'uppercase',
         textAlign: 'left',
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
         transition: 'background 0.15s, color 0.15s',
       }}
     >
@@ -158,8 +164,6 @@ const VideoContent = () => {
   const [quality,    setQuality]    = useState('HIGH');
   const [fullscreen, setFullscreen] = useState(false);
   const [vsync,      setVsync]      = useState(true);
-  const [brightness, setBrightness] = useState(50);
-  const [contrast,   setContrast]   = useState(50);
   return (<>
     <SettingsSection>Display</SettingsSection>
     <SettingsRow label="Fullscreen"><SettingsToggle value={fullscreen} onChange={setFullscreen} /></SettingsRow>
@@ -172,9 +176,6 @@ const VideoContent = () => {
         { value: 'ULTRA',  label: 'ULTRA'  },
       ]} />
     </SettingsRow>
-    <SettingsSection>Image</SettingsSection>
-    <SettingsRow label="Brightness"><SettingsSlider value={brightness} onChange={setBrightness} /></SettingsRow>
-    <SettingsRow label="Contrast"><SettingsSlider value={contrast} onChange={setContrast} /></SettingsRow>
   </>);
 };
 
@@ -223,12 +224,10 @@ const LanguageContent = () => {
   </>);
 };
 
-const GameplayContent = () => {
+const GameplayContent = ({ gameState, setGameState }) => {
   const [difficulty, setDifficulty] = useState('STANDARD');
-  const [autosave,   setAutosave]   = useState(true);
   const [hints,      setHints]      = useState(true);
-  const [hud,        setHud]        = useState(true);
-  const [camShake,   setCamShake]   = useState(false);
+  const textScale = gameState?.textScale ?? 100;
   return (<>
     <SettingsSection>Difficulty</SettingsSection>
     <SettingsRow label="Difficulty">
@@ -239,45 +238,169 @@ const GameplayContent = () => {
       ]} />
     </SettingsRow>
     <SettingsSection>Accessibility</SettingsSection>
-    <SettingsRow label="Auto-Save"><SettingsToggle value={autosave} onChange={setAutosave} /></SettingsRow>
     <SettingsRow label="Hints"><SettingsToggle value={hints} onChange={setHints} /></SettingsRow>
-    <SettingsRow label="HUD Visible"><SettingsToggle value={hud} onChange={setHud} /></SettingsRow>
-    <SettingsRow label="Camera Shake"><SettingsToggle value={camShake} onChange={setCamShake} /></SettingsRow>
+    <SettingsSection>Interface</SettingsSection>
+    <SettingsRow label="Text Size">
+      <SettingsSlider
+        value={textScale}
+        min={80}
+        max={140}
+        onChange={v => setGameState(p => ({ ...p, textScale: v }))}
+      />
+    </SettingsRow>
   </>);
+};
+
+// ── Controls view ──────────────────────────────────────────────────────────────
+const CONTROL_GROUPS = [
+  {
+    heading: 'Movement',
+    rows: [
+      { keys: 'W A S D',  pad: 'Left Stick / D-Pad',  action: 'Move'         },
+      { keys: 'Shift',    pad: 'LT / LB',              action: 'Sprint'       },
+      { keys: 'C',        pad: 'B / Circle',           action: 'Crouch'       },
+    ],
+  },
+  {
+    heading: 'Actions',
+    rows: [
+      { keys: 'E',              pad: 'A / Cross',            action: 'Interact'          },
+      { keys: 'Right-click',    pad: 'RB / RT',              action: 'Ability Toggle'    },
+      { keys: 'Hold R-click',   pad: 'Hold RB/RT near NPC',  action: 'Observe (Mimicry)' },
+      { keys: '—',              pad: 'X / Square',           action: 'Toggle Cursor'     },
+      { keys: '—',              pad: 'A (cursor on)',        action: 'Click'             },
+      { keys: '—',              pad: 'B (cursor on)',        action: 'Right-click'       },
+    ],
+  },
+  {
+    heading: 'Interface',
+    rows: [
+      { keys: 'Tab',  pad: 'Start / Options',  action: 'Menu'          },
+      { keys: 'J',    pad: 'Back / Select',    action: 'Journal'       },
+      { keys: 'I',    pad: 'Y / Triangle',     action: 'Satchel'       },
+      { keys: 'Esc',  pad: '—',               action: 'Close All'     },
+      { keys: 'G',    pad: '—',               action: 'Debug Overlay' },
+    ],
+  },
+];
+
+const KeyBadge = ({ label }) => (
+  <span style={{
+    fontFamily: FONT, fontSize: 8, letterSpacing: '0.5px',
+    color: 'rgba(58,32,16,0.55)',
+    background: 'rgba(58,32,16,0.06)',
+    border: `1px solid rgba(58,32,16,0.18)`,
+    padding: '2px 6px',
+    whiteSpace: 'nowrap',
+    display: 'inline-block',
+  }}>
+    {label}
+  </span>
+);
+
+const ControlsView = ({ onBack }) => {
+  const zoom = useTextScale();
+  return (
+    <div style={{ minWidth: 380, zoom }}>
+      <button
+        onClick={onBack}
+        onMouseEnter={e => { e.currentTarget.style.color = HUD_TEXT; }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(58,32,16,0.45)'; }}
+        style={{
+          display: 'block', width: '100%',
+          padding: '9px 16px',
+          background: 'transparent', border: 'none',
+          borderBottom: `1px solid rgba(58,32,16,0.15)`,
+          fontFamily: FONT, fontSize: 9, letterSpacing: '2px',
+          color: 'rgba(58,32,16,0.45)', textTransform: 'uppercase',
+          cursor: 'pointer', textAlign: 'left',
+          transition: 'color 0.15s',
+        }}
+      >
+        ← MENU
+      </button>
+
+      {/* Column headers */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 110px 110px',
+        padding: '6px 16px 4px',
+        borderBottom: `1px solid rgba(58,32,16,0.12)`,
+      }}>
+        {['ACTION', 'KEYBOARD', 'CONTROLLER'].map(h => (
+          <span key={h} style={{
+            fontFamily: FONT, fontSize: 7, letterSpacing: '2px',
+            color: 'rgba(58,32,16,0.35)', textTransform: 'uppercase',
+            textAlign: h === 'ACTION' ? 'left' : 'center',
+          }}>{h}</span>
+        ))}
+      </div>
+
+      <div style={{ maxHeight: 420, overflowY: 'auto', padding: '4px 0 8px' }}>
+        {CONTROL_GROUPS.map(({ heading, rows }) => (
+          <div key={heading}>
+            <div style={{
+              fontFamily: FONT, fontSize: 8, letterSpacing: '3px',
+              color: 'rgba(58,32,16,0.4)', textTransform: 'uppercase',
+              padding: '10px 16px 5px',
+            }}>
+              {heading}
+            </div>
+            {rows.map(({ keys, pad, action }) => (
+              <div
+                key={action}
+                style={{
+                  display: 'grid', gridTemplateColumns: '1fr 110px 110px',
+                  alignItems: 'center',
+                  padding: '5px 16px',
+                  borderTop: `1px solid rgba(58,32,16,0.07)`,
+                  gap: 4,
+                }}
+              >
+                <span style={{
+                  fontFamily: FONT, fontSize: 9, letterSpacing: '0.8px',
+                  color: HUD_TEXT, textTransform: 'uppercase',
+                }}>
+                  {action}
+                </span>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <KeyBadge label={keys} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <KeyBadge label={pad} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 // ── Menu popup ─────────────────────────────────────────────────────────────────
 const OPTIONS_TABS = ['VIDEO', 'SOUND', 'LANGUAGE', 'GAMEPLAY'];
 
-const MenuPopup = ({ gameState, onOpenLedger, onReset, onClose }) => {
+const MenuPopup = ({ gameState, setGameState, onLoad, onReset, onClose, onDebug }) => {
   const [confirmReset, setConfirmReset] = useState(false);
-  const [optionsView,  setOptionsView]  = useState(null); // null = main list, else tab name
-
-  const ref = useRef(null);
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  const [optionsView,  setOptionsView]  = useState(null); // null = main list, 'controls', or options tab name
+  const hasSave = !!loadGame();
+  const zoom = useTextScale();
 
   return (
     <div
-      ref={ref}
       style={{
-        position: 'absolute',
-        bottom: HUD_HEIGHT,
-        left: 0,
         background: HUD_BG,
         borderTop: `2px solid ${HUD_HOVER}`,
         borderRight: `1px solid rgba(58,32,16,0.25)`,
-        minWidth: optionsView ? 340 : 180,
-        zIndex: 9100,
+        minWidth: (optionsView && optionsView !== 'controls') ? 340 : optionsView === 'controls' ? 380 : 180,
+        zoom,
         boxShadow: '2px -4px 20px rgba(0,0,0,0.35)',
       }}
     >
-      {optionsView ? (
+      {optionsView === 'controls' ? (
+        // ── CONTROLS VIEW ────────────────────────────────────────────────────
+        <ControlsView onBack={() => setOptionsView(null)} />
+      ) : optionsView ? (
         // ── OPTIONS VIEW ──────────────────────────────────────────────────────
         <>
           {/* Back */}
@@ -333,15 +456,21 @@ const MenuPopup = ({ gameState, onOpenLedger, onReset, onClose }) => {
             {optionsView === 'VIDEO'    && <VideoContent    />}
             {optionsView === 'SOUND'    && <SoundContent    />}
             {optionsView === 'LANGUAGE' && <LanguageContent />}
-            {optionsView === 'GAMEPLAY' && <GameplayContent />}
+            {optionsView === 'GAMEPLAY' && <GameplayContent gameState={gameState} setGameState={setGameState} />}
           </div>
         </>
       ) : (
         // ── MAIN MENU VIEW ────────────────────────────────────────────────────
         <>
-          <PopupItem label="MAIN MENU" onClick={() => { onOpenLedger(); onClose(); }} />
           <PopupItem label="SAVE GAME" onClick={() => { saveGame(gameState); onClose(); }} />
+          <PopupItem
+            label="LOAD GAME"
+            onClick={() => { if (hasSave) { onLoad(); onClose(); } }}
+            muted={!hasSave}
+          />
           <PopupItem label="OPTIONS"   onClick={() => setOptionsView('VIDEO')} />
+          <PopupItem label="CONTROLS"  onClick={() => setOptionsView('controls')} />
+          <PopupItem label="DEBUG [G]" onClick={() => { onDebug?.(); onClose(); }} />
 
           {/* RESET — two-step confirm */}
           {!confirmReset ? (
@@ -387,127 +516,281 @@ const MenuPopup = ({ gameState, onOpenLedger, onReset, onClose }) => {
   );
 };
 
-// ── Aura alert copy ────────────────────────────────────────────────────────────
-const getAuraAlert = (integrity) => {
-  if (integrity >= 75) return { headline: 'Your Aura is Strong',        body: 'You move unseen. The world bends around you.',          color: '#2a7a5a' };
-  if (integrity >= 50) return { headline: 'Your Aura is Wavering',      body: 'Something has noticed you. Stay cautious.',             color: '#7a6a2a' };
-  if (integrity >= 25) return { headline: 'Your Aura is Faltering',     body: 'The veil is thinning. Find shadow before it breaks.',   color: '#c07a2a' };
-  return               { headline: 'Your Aura is Critically Low',       body: 'You need to find cover. You are almost fully exposed.', color: '#c0392b' };
-};
 
-const AuraStatsBox = ({ integrity, vigor }) => {
-  const [hovered, setHovered] = useState(false);
-  const alert = getAuraAlert(integrity);
-
+// ── Draggable panel wrapper ────────────────────────────────────────────────────
+const DraggablePanel = ({ position, zIndex, onDrag, onClose, onFocus, children }) => {
+  const handleBarMouseDown = (e) => {
+    if (e.target.closest('button')) return;
+    e.preventDefault();
+    onFocus();
+    const ox = e.clientX - position.x, oy = e.clientY - position.y;
+    const move = (ev) => onDrag({ x: ev.clientX - ox, y: ev.clientY - oy });
+    const up   = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
   return (
     <div
-      style={{ position: 'relative', flexShrink: 0 }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseDown={onFocus}
+      style={{ position: 'fixed', left: position.x, top: position.y, zIndex, userSelect: 'none' }}
     >
-      {/* Popover */}
-      {hovered && (
-        <div style={{
-          position: 'absolute',
-          bottom: HUD_HEIGHT + 8,
-          left: 0,
-          background: HUD_BG,
-          border: `2px solid ${alert.color}`,
-          padding: '12px 16px',
-          minWidth: 220,
-          boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
-          pointerEvents: 'none',
-          zIndex: 9200,
-        }}>
-          <div style={{
-            fontFamily: FONT, fontSize: 10, letterSpacing: '2px',
-            color: alert.color, textTransform: 'uppercase', marginBottom: 6,
+      <div
+        onMouseDown={handleBarMouseDown}
+        style={{
+          height: 24,
+          background: '#89ceaf',
+          borderBottom: '1px solid rgba(0,0,0,0.12)',
+          cursor: 'grab',
+          display: 'flex',
+          alignItems: 'center',
+          paddingLeft: 2,
+        }}
+      >
+        <button
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          style={{
+            background: 'rgba(0,0,0,0.15)',
+            border: '1px solid rgba(0,0,0,0.2)',
+            color: '#fff',
+            fontSize: 11,
             fontWeight: 'bold',
-          }}>
-            {alert.headline}
-          </div>
-          <div style={{
-            fontFamily: FONT, fontSize: 10, color: HUD_TEXT,
-            lineHeight: 1.6, letterSpacing: '0.5px',
-          }}>
-            {alert.body}
-          </div>
-          <div style={{
-            marginTop: 10,
-            display: 'flex', gap: 16,
-            fontFamily: FONT, fontSize: 9, letterSpacing: '1px',
-            color: 'rgba(58,32,16,0.5)', textTransform: 'uppercase',
-          }}>
-            <span>INTEGRITY <strong style={{ color: alert.color }}>{Math.round(integrity)}%</strong></span>
-            <span>VIGOR <strong style={{ color: '#2a7a5a' }}>{Math.round(vigor)}%</strong></span>
-          </div>
-        </div>
-      )}
+            cursor: 'pointer',
+            fontFamily: 'Courier New, monospace',
+            padding: '0 7px',
+            height: 18,
+            lineHeight: '18px',
+            borderRadius: 2,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.35)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.15)'; }}
+        >✕</button>
+      </div>
+      {children}
+    </div>
+  );
+};
 
-      {/* Bar strip */}
+// ── Rooms where moving without concealment is actively dangerous ───────────────
+// Add city / public / overseen location IDs here as they are built.
+const CONCEALMENT_REQUIRED = new Set([
+  'city_square',
+  'market_street',
+  'plantation_road',
+  'town_hall',
+  'docks',
+]);
+
+const AuraStatsBox = ({ morphStability, vigor, activeMorph, activeAbility, currentRoom }) => {
+  const [hovered, setHovered] = useState(false);
+  const zoom = useTextScale();
+  const stabilityColor  = morphStability < 25 ? '#c0392b' : morphStability < 50 ? '#b08030' : '#2a5a3a';
+  const isIdle          = !activeMorph && (!activeAbility || activeAbility === 'NONE');
+  const inDangerZone    = CONCEALMENT_REQUIRED.has(currentRoom);
+
+  return (
+  <div
+    style={{ position: 'relative', flexShrink: 0 }}
+    onMouseEnter={() => setHovered(true)}
+    onMouseLeave={() => setHovered(false)}
+  >
+    {/* Hover popover */}
+    {hovered && (
       <div style={{
-        height: HUD_HEIGHT,
-        background: '#89ceaf',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 18,
-        padding: '0 20px',
-        borderRight: `1px solid rgba(58,32,16,0.18)`,
-        cursor: 'default',
+        position: 'absolute',
+        bottom: HUD_HEIGHT + 8,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: HUD_BG,
+        border: `1px solid rgba(58,32,16,0.3)`,
+        borderTop: `2px solid ${stabilityColor}`,
+        padding: '12px 16px',
+        minWidth: 200,
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+        pointerEvents: 'none',
+        zIndex: 9200,
+        zoom,
       }}>
         {[
-          { label: 'VIGOR',     value: vigor,     color: '#2a7a5a' },
-          { label: 'INTEGRITY', value: integrity, color: integrity < 25 ? '#c0392b' : '#2a5a3a' },
+          { label: 'Morph Stability', value: morphStability, color: stabilityColor },
+          { label: 'Vigor',           value: vigor,          color: '#2a7a5a'       },
         ].map(({ label, value, color }) => (
-          <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
-            <span style={{
-              fontFamily: FONT, fontSize: 9, letterSpacing: '2px',
-              color: 'rgba(0,0,0,0.55)', textTransform: 'uppercase',
+          <div key={label} style={{ marginBottom: 10 }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              fontFamily: FONT, fontSize: 8, letterSpacing: '2px',
+              color: 'rgba(58,32,16,0.5)', textTransform: 'uppercase', marginBottom: 4,
             }}>
-              {label}
-            </span>
-            <div style={{ width: 64, height: 3, background: 'rgba(0,0,0,0.18)', borderRadius: 2 }}>
-              <div style={{
-                height: '100%', width: `${value}%`,
-                background: color, borderRadius: 2,
-                transition: 'width 0.3s',
-              }} />
+              <span>{label}</span>
+              <strong style={{ color }}>{Math.round(value)}%</strong>
+            </div>
+            <div style={{ height: 2, background: 'rgba(58,32,16,0.18)' }}>
+              <div style={{ height: '100%', width: `${value}%`, background: color, transition: 'width 0.3s' }} />
             </div>
           </div>
         ))}
+        {isIdle && (
+          <div style={{
+            marginTop: 4,
+            paddingTop: 8,
+            borderTop: `1px solid rgba(58,32,16,0.12)`,
+            fontFamily: 'Georgia, serif',
+            fontSize: 11,
+            fontStyle: 'italic',
+            color: inDangerZone ? '#c0392b' : 'rgba(58,32,16,0.45)',
+            lineHeight: 1.5,
+          }}>
+            {inDangerZone
+              ? 'You are exposed. In the city, a Black woman moving without concealment draws immediate suspicion. Activate an ability or remain hidden.'
+              : 'No morph or aura ability active.'}
+          </div>
+        )}
       </div>
-    </div>
+    )}
+
+    {/* Bar strip */}
+  <div style={{
+    height: HUD_HEIGHT,
+    background: '#89ceaf',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 18,
+    padding: '0 20px',
+    borderRight: `1px solid rgba(58,32,16,0.18)`,
+    cursor: 'default',
+  }}>
+    {[
+      { label: 'VIGOR',     value: vigor,     color: '#2a7a5a' },
+      { label: 'MORPH STABILITY', value: morphStability, color: morphStability < 25 ? '#c0392b' : '#2a5a3a' },
+    ].map(({ label, value, color }) => (
+      <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+        <span style={{
+          fontFamily: FONT, fontSize: 9, letterSpacing: '2px',
+          color: 'rgba(0,0,0,0.55)', textTransform: 'uppercase',
+        }}>
+          {label}
+        </span>
+        <div style={{ width: 64, height: 3, background: 'rgba(0,0,0,0.18)', borderRadius: 2 }}>
+          <div style={{
+            height: '100%', width: `${value}%`,
+            background: color, borderRadius: 2,
+            transition: 'width 0.3s',
+          }} />
+        </div>
+      </div>
+    ))}
+  </div>
+  </div>
   );
+};
+
+// ── Gamepad indicator ─────────────────────────────────────────────────────────
+const useGamepadConnected = () => {
+  const [connected,    setConnected]    = useState(false);
+  const [cursorActive, setCursorActive] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      setConnected(Array.from(pads).some(p => p?.mapping === 'standard'));
+    };
+    check();
+    const onConnect    = () => setConnected(true);
+    const onDisconnect = () => { check(); };
+    const onCursor     = (e) => setCursorActive(e.detail);
+    window.addEventListener('gamepadconnected',    onConnect);
+    window.addEventListener('gamepaddisconnected', onDisconnect);
+    window.addEventListener('gp-cursor-mode',      onCursor);
+    return () => {
+      window.removeEventListener('gamepadconnected',    onConnect);
+      window.removeEventListener('gamepaddisconnected', onDisconnect);
+      window.removeEventListener('gp-cursor-mode',      onCursor);
+    };
+  }, []);
+  return { connected, cursorActive };
 };
 
 // ── Main HUD ───────────────────────────────────────────────────────────────────
 export const HUD = ({
   gameState,
   setGameState,
-  activePanel,
-  setActivePanel,
-  onOpenLedger,
+  onLoad,
   onReset,
+  onDebug,
 }) => {
-  const { pendingGive, nearbyNPC, nearbyEntity, integrity = 100, vigor = 100 } = gameState;
+  const { pendingGive, nearbyNPC, nearbyEntity, morphStability = 100, vigor = 100, activeMorph = null, activeAbility = 'NONE', currentRoom } = gameState;
 
-  const menuOpen    = activePanel === 'menu';
-  const journalOpen = activePanel === 'journal';
-  const satchelOpen = activePanel === 'satchel';
+  const zoom = useTextScale();
+  const { connected: gamepadConnected, cursorActive } = useGamepadConnected();
 
-  const toggle = (panel) => setActivePanel(p => p === panel ? null : panel);
+  // ── Multi-panel state ──────────────────────────────────────────────────────
+  const [openPanels, setOpenPanels] = useState(new Set());
+  const [positions,  setPositions]  = useState({});
+  const zCounter = useRef(9101);
+  const [zMap,    setZMap]          = useState({});
 
-  // Bottom-left action prompt
+  // Button refs — used to place each panel above its own button
+  const menuBtnRef    = useRef(null);
+  const journalBtnRef = useRef(null);
+  const satchelBtnRef = useRef(null);
+  const statusBtnRef  = useRef(null);
+
+  // Known panel content dimensions (design-space px, no zoom).
+  // y is fixed so the panel bottom sits flush above the HUD bar (design y 1032 = 1080-48).
+  // x is computed at open-time from the button's screen rect → design space.
+  const PANEL_META = {
+    menu:    { w: 200, y: 798 },   // ~210px content
+    journal: { w: 700, y: 388 },   // 600px maxHeight + header
+    satchel: { w: 330, y: 518 },   // 5-row grid + header
+    status:  { w: 860, y: 388 },   // fixed 620px
+  };
+
+  // Convert a button's screen-space rect to design-space x center, then
+  // clamp so the panel stays within the 1920px canvas.
+  const getDefaultPos = (key) => {
+    const meta = PANEL_META[key] ?? { w: 300, y: 400 };
+    const btnRef = { menu: menuBtnRef, journal: journalBtnRef, satchel: satchelBtnRef, status: statusBtnRef }[key];
+    if (btnRef?.current) {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const ox    = (window.innerWidth - 1920 * scale) / 2;
+      const rect  = btnRef.current.getBoundingClientRect();
+      const cx    = (rect.left + rect.width / 2 - ox) / scale;
+      return { x: Math.max(10, Math.min(1910 - meta.w, cx - meta.w / 2)), y: meta.y };
+    }
+    // Fallback: center panel horizontally
+    return { x: Math.max(10, Math.min(1910 - meta.w, 960 - meta.w / 2)), y: meta.y };
+  };
+
+  const bringToFront = (key) => { zCounter.current += 1; setZMap(m => ({ ...m, [key]: zCounter.current })); };
+  const openPanel    = (key) => {
+    setOpenPanels(s => new Set(s).add(key));
+    setPositions(p => p[key] ? p : { ...p, [key]: getDefaultPos(key) });
+    bringToFront(key);
+  };
+  const closePanel = (key) => setOpenPanels(s => { const n = new Set(s); n.delete(key); return n; });
+  const movePanel  = (key, pos) => setPositions(p => ({ ...p, [key]: pos }));
+
+  // Keyboard shortcuts (Tab=menu, J=journal, I=satchel, Esc=close all)
+  useEffect(() => {
+    const fn = (e) => {
+      if (e.key.toLowerCase() === 'i') { openPanels.has('satchel') ? closePanel('satchel') : openPanel('satchel'); }
+      if (e.key.toLowerCase() === 'j') { openPanels.has('journal') ? closePanel('journal') : openPanel('journal'); }
+      if (e.key === 'Tab') { e.preventDefault(); openPanels.has('menu') ? closePanel('menu') : openPanel('menu'); }
+      if (e.key === 'Escape') setOpenPanels(new Set());
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [openPanels]); // re-registers when panels open/close so it closes over fresh state
+
+  // Bottom-left action prompt — key hint swaps to controller label when a pad is active
+  const interactHint = gamepadConnected ? '[A]'     : '[E]';
+  const cancelHint   = gamepadConnected ? '[START]' : '[ESC]';
   let centerText = null;
   if (pendingGive) {
     centerText = nearbyNPC
-      ? `[E] GIVE TO ${nearbyNPC.name.toUpperCase()} — ${pendingGive.name.toUpperCase()}`
+      ? `${interactHint} GIVE TO ${nearbyNPC.name.toUpperCase()} — ${pendingGive.name.toUpperCase()}`
       : `GIVING: ${pendingGive.name.toUpperCase()} — APPROACH AN NPC`;
   } else if (nearbyEntity?.name && nearbyEntity.logicType !== 'HIDE') {
-    centerText = `[E]  ${nearbyEntity.name.toUpperCase()}`;
+    centerText = `${interactHint}  ${nearbyEntity.name.toUpperCase()}`;
   }
-
-  const { hovered: statusHovered, bind: statusBind } = useHover();
 
   return (
     <div style={{
@@ -537,7 +820,7 @@ export const HUD = ({
         }}>
           <span style={{
             fontFamily: FONT,
-            fontSize: 10,
+            fontSize: `${10 * zoom}px`,
             letterSpacing: '1.5px',
             color: '#fff',
             textTransform: 'uppercase',
@@ -559,7 +842,7 @@ export const HUD = ({
               onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
               onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }}
             >
-              [ESC] CANCEL
+              {cancelHint} CANCEL
             </button>
           )}
         </div>
@@ -567,6 +850,31 @@ export const HUD = ({
 
       {/* Fills space left of center */}
       <div style={{ flex: 1 }} />
+
+      {/* RIGHT — gamepad indicator */}
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        padding: '0 16px',
+        borderLeft: `1px solid rgba(58,32,16,0.18)`,
+        gap: 6,
+        flexShrink: 0,
+      }}>
+        <div style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: cursorActive ? '#cb7866' : gamepadConnected ? '#5a9a5a' : 'rgba(58,32,16,0.2)',
+          transition: 'background 0.3s',
+        }} />
+        <span style={{
+          fontFamily: FONT,
+          fontSize: `${9 * zoom}px`,
+          letterSpacing: '1.5px',
+          color: gamepadConnected ? HUD_TEXT : 'rgba(58,32,16,0.3)',
+          textTransform: 'uppercase',
+          transition: 'color 0.3s',
+        }}>
+          {cursorActive ? 'CUR' : 'CTR'}
+        </span>
+      </div>
 
       {/* CENTER — button group, absolutely centered in the bar */}
       <div style={{
@@ -581,108 +889,123 @@ export const HUD = ({
         borderRight: `1px solid rgba(58,32,16,0.18)`,
       }}>
 
-        {/* MENU — popup on hover */}
-        <div
-          style={{ position: 'relative', flexShrink: 0 }}
-          onMouseEnter={() => setActivePanel('menu')}
-          onMouseLeave={() => setActivePanel(p => p === 'menu' ? null : p)}
+        {/* MENU — click to open */}
+        <HudButton
+          ref={menuBtnRef}
+          active={openPanels.has('menu')}
+          style={{ borderLeft: 'none' }}
+          onClick={() => openPanels.has('menu') ? closePanel('menu') : openPanel('menu')}
         >
-          <HudButton active={menuOpen} style={{ borderLeft: 'none' }}>
-            MENU
-          </HudButton>
-          {menuOpen && (
-            <MenuPopup
-              gameState={gameState}
-              onOpenLedger={onOpenLedger}
-              onReset={onReset}
-              onClose={() => setActivePanel(null)}
-            />
-          )}
-        </div>
+          MENU
+        </HudButton>
 
-        {/* JOURNAL */}
-        <div
-          style={{ position: 'relative', flexShrink: 0 }}
-          onMouseEnter={() => setActivePanel(p => p && p !== 'journal' ? null : p)}
-        >
-          <button
-            onClick={() => toggle('journal')}
-            style={{
-              height: HUD_HEIGHT,
-              padding: '0 24px',
-              background: journalOpen ? HUD_HOVER : 'transparent',
-              color: journalOpen ? '#fff' : HUD_TEXT,
-              border: 'none',
-              borderRight: `1px solid rgba(58,32,16,0.18)`,
-              fontFamily: FONT, fontSize: 11,
-              letterSpacing: '2px', textTransform: 'uppercase',
-              cursor: 'pointer',
-              transition: 'background 0.15s, color 0.15s',
-              flexShrink: 0,
-            }}
-          >
-            JOURNAL
-          </button>
-          {journalOpen && <Journal gameState={gameState} />}
-        </div>
-
-        {/* STATS BOX — vigor + integrity with aura alert popover */}
-        <AuraStatsBox integrity={integrity} vigor={vigor} />
-
-        {/* SATCHEL */}
-        <div
-          style={{ position: 'relative', flexShrink: 0 }}
-          onMouseEnter={() => setActivePanel(p => p && p !== 'satchel' ? null : p)}
-        >
-          <button
-            onClick={() => toggle('satchel')}
-            style={{
-              height: HUD_HEIGHT,
-              padding: '0 24px',
-              background: satchelOpen ? HUD_HOVER : 'transparent',
-              color: satchelOpen ? '#fff' : HUD_TEXT,
-              border: 'none',
-              borderLeft:  `1px solid rgba(58,32,16,0.18)`,
-              borderRight: `1px solid rgba(58,32,16,0.18)`,
-              fontFamily: FONT, fontSize: 11,
-              letterSpacing: '2px', textTransform: 'uppercase',
-              cursor: 'pointer',
-              transition: 'background 0.15s, color 0.15s',
-              flexShrink: 0,
-            }}
-          >
-            SATCHEL
-          </button>
-          {satchelOpen && (
-            <InventoryUI
-              gameState={gameState}
-              setGameState={setGameState}
-              onClose={() => setActivePanel(null)}
-            />
-          )}
-        </div>
-
-        {/* STATUS */}
+        {/* JOURNAL — click to open */}
         <button
-          {...statusBind}
-          onMouseEnter={() => setActivePanel(null)}
+          ref={journalBtnRef}
+          onClick={() => openPanels.has('journal') ? closePanel('journal') : openPanel('journal')}
           style={{
-            height: HUD_HEIGHT,
-            padding: '0 24px',
-            background: statusHovered ? HUD_HOVER : 'transparent',
-            color: statusHovered ? '#fff' : HUD_TEXT,
-            border: 'none',
-            fontFamily: FONT, fontSize: 11,
+            height: HUD_HEIGHT, padding: '0 24px',
+            background: openPanels.has('journal') ? HUD_HOVER : 'transparent',
+            color: openPanels.has('journal') ? '#fff' : HUD_TEXT,
+            border: 'none', borderRight: `1px solid rgba(58,32,16,0.18)`,
+            fontFamily: FONT, fontSize: `${11 * zoom}px`,
             letterSpacing: '2px', textTransform: 'uppercase',
-            cursor: 'pointer',
-            transition: 'background 0.15s, color 0.15s',
-            flexShrink: 0,
+            cursor: 'pointer', transition: 'background 0.15s, color 0.15s', flexShrink: 0,
+          }}
+        >
+          JOURNAL
+        </button>
+
+        {/* STATS BOX — vigor + morphStability with aura alert popover (hover, unchanged) */}
+        <AuraStatsBox morphStability={morphStability} vigor={vigor} activeMorph={activeMorph} activeAbility={activeAbility} currentRoom={currentRoom} />
+
+        {/* SATCHEL — click to open */}
+        <button
+          ref={satchelBtnRef}
+          onClick={() => openPanels.has('satchel') ? closePanel('satchel') : openPanel('satchel')}
+          style={{
+            height: HUD_HEIGHT, padding: '0 24px',
+            background: openPanels.has('satchel') ? HUD_HOVER : 'transparent',
+            color: openPanels.has('satchel') ? '#fff' : HUD_TEXT,
+            border: 'none',
+            borderLeft:  `1px solid rgba(58,32,16,0.18)`,
+            borderRight: `1px solid rgba(58,32,16,0.18)`,
+            fontFamily: FONT, fontSize: `${11 * zoom}px`,
+            letterSpacing: '2px', textTransform: 'uppercase',
+            cursor: 'pointer', transition: 'background 0.15s, color 0.15s', flexShrink: 0,
+          }}
+        >
+          SATCHEL
+        </button>
+
+        {/* STATUS — click to open */}
+        <button
+          ref={statusBtnRef}
+          onClick={() => openPanels.has('status') ? closePanel('status') : openPanel('status')}
+          style={{
+            height: HUD_HEIGHT, padding: '0 24px',
+            background: openPanels.has('status') ? HUD_HOVER : 'transparent',
+            color: openPanels.has('status') ? '#fff' : HUD_TEXT,
+            border: 'none',
+            fontFamily: FONT, fontSize: `${11 * zoom}px`,
+            letterSpacing: '2px', textTransform: 'uppercase',
+            cursor: 'pointer', transition: 'background 0.15s, color 0.15s', flexShrink: 0,
           }}
         >
           STATUS
         </button>
 
       </div>
+
+      {/* DRAGGABLE PANELS — position: fixed, rendered inside HUD div but escape stacking context */}
+      {openPanels.has('menu') && positions.menu && (
+        <DraggablePanel
+          position={positions.menu} zIndex={zMap.menu ?? 9101}
+          onDrag={p => movePanel('menu', p)}
+          onClose={() => closePanel('menu')}
+          onFocus={() => bringToFront('menu')}
+        >
+          <MenuPopup
+            gameState={gameState} setGameState={setGameState}
+            onLoad={onLoad} onReset={onReset}
+            onClose={() => closePanel('menu')}
+            onDebug={onDebug}
+          />
+        </DraggablePanel>
+      )}
+      {openPanels.has('journal') && positions.journal && (
+        <DraggablePanel
+          position={positions.journal} zIndex={zMap.journal ?? 9101}
+          onDrag={p => movePanel('journal', p)}
+          onClose={() => closePanel('journal')}
+          onFocus={() => bringToFront('journal')}
+        >
+          <Journal gameState={gameState} />
+        </DraggablePanel>
+      )}
+      {openPanels.has('satchel') && positions.satchel && (
+        <DraggablePanel
+          position={positions.satchel} zIndex={zMap.satchel ?? 9101}
+          onDrag={p => movePanel('satchel', p)}
+          onClose={() => closePanel('satchel')}
+          onFocus={() => bringToFront('satchel')}
+        >
+          <InventoryUI
+            gameState={gameState} setGameState={setGameState}
+            onClose={() => closePanel('satchel')}
+          />
+        </DraggablePanel>
+      )}
+      {openPanels.has('status') && positions.status && (
+        <DraggablePanel
+          position={positions.status} zIndex={zMap.status ?? 9101}
+          onDrag={p => movePanel('status', p)}
+          onClose={() => closePanel('status')}
+          onFocus={() => bringToFront('status')}
+        >
+          <StatusPanel gameState={gameState} setGameState={setGameState} />
+        </DraggablePanel>
+      )}
 
     </div>
   );

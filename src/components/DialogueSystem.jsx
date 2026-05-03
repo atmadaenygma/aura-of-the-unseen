@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DIALOGUE_DATA } from '../data/dialogue';
 import { DiceCheck } from './DiceCheck';
+import { useTextScale } from '../context/TextScaleContext';
 
 // Map a speaker name to their portrait path.
 // Returns null (not a broken fallback) if no portrait exists —
@@ -22,8 +23,11 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
   const [activeCheck, setActiveCheck] = useState(null);
   const [showDice,    setShowDice]    = useState(false);
   const [npcPortraitError, setNpcPortraitError] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(0);
 
-  const scrollRef = useRef(null);
+  const scrollRef    = useRef(null);
+  const gpPrevRef    = useRef([]);
+  const processRef   = useRef(null); // stable ref to processChoice so rAF loop stays fresh
 
   // Auto-scroll to bottom on every ledger change
   useEffect(() => {
@@ -48,6 +52,86 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
     });
   }, [currentNode?.facet, setGameState]);
 
+  // Visible options — same filter applied in render so keyboard/gamepad and buttons stay in sync
+  const getVisibleOptions = () => {
+    if (!currentNode?.options) return [];
+    return currentNode.options.filter(opt => {
+      if (opt.requireItem   && !(gameState.inventory || []).some(it => it?.id === opt.requireItem)) return false;
+      if (opt.requireFlag   && !gameState.flags?.[opt.requireFlag])   return false;
+      if (opt.requireNoFlag &&  gameState.flags?.[opt.requireNoFlag]) return false;
+      return true;
+    });
+  };
+
+  // Reset selection when the node changes
+  useEffect(() => { setSelectedOption(0); }, [currentNode]);
+
+  // ── Keyboard navigation ────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if (showDice) return;
+      const opts = getVisibleOptions();
+      if (!opts.length) return;
+
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setSelectedOption(i => (i - 1 + opts.length) % opts.length);
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        setSelectedOption(i => (i + 1) % opts.length);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        processRef.current(opts[selectedOption]);
+      } else {
+        const n = parseInt(e.key, 10);
+        if (n >= 1 && n <= opts.length) processRef.current(opts[n - 1]);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showDice, selectedOption, currentNode, gameState.inventory, gameState.flags]);
+
+  // ── Gamepad navigation (rAF polling — only active while dialogue is open) ──
+  useEffect(() => {
+    if (showDice) return;
+    let frame;
+    const loop = () => {
+      const pads  = navigator.getGamepads ? navigator.getGamepads() : [];
+      let gp = null;
+      for (let i = 0; i < pads.length; i++) { if (pads[i]?.mapping === 'standard') { gp = pads[i]; break; } }
+      if (!gp) { for (let i = 0; i < pads.length; i++) { if (pads[i]) { gp = pads[i]; break; } } }
+
+      if (gp) {
+        const prev        = gpPrevRef.current;
+        const btnDown     = (idx) => !!(gp.buttons[idx]?.pressed) || (gp.buttons[idx]?.value ?? 0) > 0.5;
+        const justPressed = (idx) => btnDown(idx) && !prev[idx];
+
+        const opts = getVisibleOptions();
+        if (opts.length) {
+          // D-pad up / left stick up
+          if (justPressed(12) || (gp.axes[1] < -0.5 && !(prev._ly < -0.5))) {
+            setSelectedOption(i => (i - 1 + opts.length) % opts.length);
+          }
+          // D-pad down / left stick down
+          if (justPressed(13) || (gp.axes[1] > 0.5 && !(prev._ly > 0.5))) {
+            setSelectedOption(i => (i + 1) % opts.length);
+          }
+          // A / Cross → confirm
+          if (justPressed(0)) {
+            setSelectedOption(cur => { processRef.current(opts[cur]); return cur; });
+          }
+        }
+
+        gpPrevRef.current = Array.from(gp.buttons).map(b => !!(b?.pressed) || (b?.value ?? 0) > 0.5);
+        gpPrevRef.current._ly = gp.axes[1]; // store axis for edge detection
+      }
+
+      frame = requestAnimationFrame(loop);
+    };
+    frame = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frame);
+  }, [showDice, currentNode, gameState.inventory, gameState.flags]);
+
   const processChoice = (choice) => {
     // Commit current node to history before advancing
     setHistory(prev => [...prev, {
@@ -69,7 +153,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
     // Apply any state mutations from this choice
     const updates = { ...gameState };
     if (choice.flagTrigger) updates.flags     = { ...updates.flags, [choice.flagTrigger]: true };
-    if (choice.impact)      updates.integrity = Math.max(0, updates.integrity + choice.impact);
+    if (choice.impact)      updates.morphStability = Math.max(0, updates.morphStability + choice.impact);
     if (choice.rewardMoney) updates.money    += choice.rewardMoney;
     // takeItem — remove a specific item id from inventory when the choice is made
     if (choice.takeItem) {
@@ -84,12 +168,17 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
     else onExit();
   };
 
+  // Keep the ref current after every render so rAF loop always calls the latest version
+  processRef.current = processChoice;
+
   const onDiceComplete = (success) => {
     const resultKey = success ? activeCheck.success : activeCheck.failure;
     setShowDice(false);
     setActiveCheck(null);
     setCurrentNode(DIALOGUE_DATA[resultKey]);
   };
+
+  const zoom = useTextScale();
 
   if (!currentNode) return null;
 
@@ -112,6 +201,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
           padding: '40px', display: 'flex', flexDirection: 'column',
           boxShadow: '0 30px 100px rgba(0,0,0,0.8)', zIndex: 10,
           overflowY: 'auto', scrollBehavior: 'smooth',
+          zoom,
         }}
       >
         {/* HISTORY — faded record of previous exchanges */}
@@ -192,32 +282,27 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
               </div>
             )}
 
-            {/* DIALOGUE OPTIONS
-                requireItem    — hidden unless item is in inventory
-                requireFlag    — hidden unless flag is set
-                requireNoFlag  — hidden if flag is set */}
+            {/* DIALOGUE OPTIONS — keyboard/controller: arrows navigate, Enter/A confirms */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '20px' }}>
-              {currentNode.options.filter(opt => {
-                if (opt.requireItem    && !(gameState.inventory || []).some(it => it?.id === opt.requireItem)) return false;
-                if (opt.requireFlag    && !gameState.flags?.[opt.requireFlag])   return false;
-                if (opt.requireNoFlag  &&  gameState.flags?.[opt.requireNoFlag]) return false;
-                return true;
-              }).map((opt, i) => (
-                <button
-                  key={i}
-                  onClick={() => processChoice(opt)}
-                  style={{
-                    background: 'none', border: '1px solid #000', color: '#000',
-                    padding: '12px', textAlign: 'left', cursor: 'pointer',
-                    fontFamily: 'serif', fontSize: '15px', fontWeight: '900',
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#000'; }}
-                >
-                  {i + 1}. {opt.text}
-                </button>
-              ))}
+              {getVisibleOptions().map((opt, i) => {
+                const highlighted = i === selectedOption;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => processChoice(opt)}
+                    onMouseEnter={() => setSelectedOption(i)}
+                    style={{
+                      background: highlighted ? '#000' : 'none',
+                      border: '1px solid #000', color: highlighted ? '#fff' : '#000',
+                      padding: '12px', textAlign: 'left', cursor: 'pointer',
+                      fontFamily: 'serif', fontSize: '15px', fontWeight: '900',
+                      transition: 'background 0.1s',
+                    }}
+                  >
+                    {i + 1}. {opt.text}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -231,32 +316,37 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
         )}
       </div>
 
-      {/* 2. THE COLOSSAL PORTRAITS */}
+      {/* 2. THE COLOSSAL PORTRAITS — each anchored to the dialogue box centre */}
+      {/* Maya — right edge sits 80px inside the dialogue box left edge */}
       <div style={{
-        position: 'absolute', bottom: '-20px', left: 0, right: 0,
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-        width: '100vw', padding: '0 2.5%', pointerEvents: 'none', zIndex: 100,
+        position: 'absolute', bottom: '-20px',
+        right: 'calc(50% + 145px)',
+        width: '500px',
+        pointerEvents: 'none', zIndex: 100,
       }}>
-        {/* Maya — always left */}
-        <div style={{ width: '945px', flexShrink: 0, marginLeft: '8%' }}>
-          <img
-            src="/ui/portraits/protagonist_portrait.png"
-            style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(20px 0 40px rgba(0,0,0,0.8))' }}
-            alt="Maya"
-          />
-        </div>
+        <img
+          src="/ui/portraits/protagonist_portrait.png"
+          style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(20px 0 40px rgba(0,0,0,0.8))' }}
+          alt="Maya"
+        />
+      </div>
 
-        {/* NPC — right side. Hides gracefully if no portrait exists for this speaker */}
-        <div style={{ width: '1300px', flexShrink: 0, marginRight: '10%' }}>
-          {npcPortraitSrc && !npcPortraitError && (
-            <img
-              src={npcPortraitSrc}
-              style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(-20px 0 40px rgba(0,0,0,0.8))' }}
-              alt={currentNode.speaker}
-              onError={() => setNpcPortraitError(true)}
-            />
-          )}
-        </div>
+      {/* NPC — left edge sits 80px inside the dialogue box right edge.
+           Height-controlled so wide images (e.g. Overseer 1161px) don't render tiny. */}
+      <div style={{
+        position: 'absolute', bottom: '-20px',
+        left: 'calc(50% + 145px)',
+        width: 'auto',
+        pointerEvents: 'none', zIndex: 100,
+      }}>
+        {npcPortraitSrc && !npcPortraitError && (
+          <img
+            src={npcPortraitSrc}
+            style={{ height: '780px', width: 'auto', display: 'block', filter: 'drop-shadow(-20px 0 40px rgba(0,0,0,0.8))' }}
+            alt={currentNode.speaker}
+            onError={() => setNpcPortraitError(true)}
+          />
+        )}
       </div>
 
       <style>{`

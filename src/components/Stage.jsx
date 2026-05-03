@@ -31,6 +31,13 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   // Debounce ref for isMayaHidden — prevents 60fps setGameState while inside a hide zone
   const isMayaHiddenRef = useRef(false);
 
+  // Notify Character's gamepad handler whenever a cursor-required UI opens or closes.
+  // Character.jsx auto-activates cursor mode on 'gp-ui-opened' if a gamepad is present.
+  useEffect(() => {
+    const open = !!(activeLoot || activeArtifact);
+    window.dispatchEvent(new CustomEvent(open ? 'gp-ui-opened' : 'gp-ui-closed'));
+  }, [activeLoot, activeArtifact]);
+
   // Terrain surface tracking — only dispatches to gameState when surface changes.
   const currentTerrainRef = useRef(null);
 
@@ -257,7 +264,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
                 ts:      Date.now(),
               }],
             };
-            if (auraFails) next.integrity = Math.max(0, p.integrity - 25);
+            if (auraFails) next.morphStability = Math.max(0, p.morphStability - 25);
             if (takesItem) {
               const inv = Array.from({ length: 20 }, (_, i) => p.inventory[i] ?? null);
               const idx = inv.findIndex(it => it?.id === item.id);
@@ -290,7 +297,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           setGameState(p => ({
             ...p,
             memories:  [...(p.memories || []), { title: entity.name, content: entity.text }],
-            integrity: Math.max(0, p.integrity + (entity.impact || 0)),
+            morphStability: Math.max(0, p.morphStability + (entity.impact || 0)),
           }));
         }
       }
@@ -306,7 +313,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
 
       <div
         id="world-container"

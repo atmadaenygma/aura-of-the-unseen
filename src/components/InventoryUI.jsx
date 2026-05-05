@@ -1,29 +1,58 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTextScale } from '../context/TextScaleContext';
+import { getItemDef } from '../data/itemDefs';
+import { RECIPES } from '../data/recipes';
+import {
+  INV_COLS, INV_ROWS, INV_TOTAL,
+  toRC, getOccupied,
+  canPlace, removeFromGrid, placeAtGrid, countItems,
+} from '../utils/inventoryHelpers';
 
-const INV_COLS    = 4;
-const INV_ROWS    = 5;
-const TOTAL_SLOTS = INV_COLS * INV_ROWS;
-const SLOT_SIZE   = 68;
-const GAP         = 6;
-const HUD_HEIGHT  = 48;
+const SLOT_SIZE  = 64;
+const GAP        = 3;
 
-const BG          = '#d6cab0';
-const BG_DARK     = '#c9bca0';
-const BG_SLOT     = 'rgba(58,32,16,0.07)';
-const BG_FILLED   = 'rgba(58,32,16,0.13)';
-const ACCENT      = '#cb7866';
-const TEXT        = '#3a2010';
-const TEXT_DIM    = 'rgba(58,32,16,0.45)';
-const TEXT_MID    = 'rgba(58,32,16,0.65)';
-const BORDER      = 'rgba(58,32,16,0.18)';
-const BORDER_MED  = 'rgba(58,32,16,0.3)';
-const FONT        = 'Courier New, monospace';
-const FONT_SER    = 'Georgia, serif';
+// ── HUD colour palette (matches the rest of the UI — do not change) ───────────
+const BG         = '#d6cab0';
+const BG_DARK    = '#c9bca0';
+const BG_GRID    = 'rgba(58,32,16,0.06)'; // subtle inset tint over BG
+const BG_SLOT    = 'rgba(58,32,16,0.07)';
+const BG_FILLED  = 'rgba(58,32,16,0.13)';
+const ACCENT        = '#cb7866';
+const QUEST_GOLD    = '#b8952a';
+const STOLEN_RED    = '#8b2e1a';   // muted dark red — item was taken
+const PURCHASED_GRN = '#2e6e3a';   // muted dark green — item was bought
+const TEXT       = '#3a2010';
+const TEXT_DIM   = 'rgba(58,32,16,0.45)';
+const TEXT_MID   = 'rgba(58,32,16,0.65)';
+const BORDER     = 'rgba(58,32,16,0.18)';
+const BORDER_MED = 'rgba(58,32,16,0.3)';
+const BORDER_LIT = 'rgba(58,32,16,0.35)';
+const FONT       = 'Courier New, monospace';
+const FONT_SER   = 'Georgia, serif';
+
+const spanPx = (cells) => cells * SLOT_SIZE + (cells - 1) * GAP;
+
+const TABS = [
+  { id: 'satchel',      label: 'SATCHEL'     },
+  { id: 'quest',        label: 'QUEST ITEMS' },
+  { id: 'ingredients',  label: 'INGREDIENTS' },
+  { id: 'recipes',      label: 'FOOD'        },
+  { id: 'recipe_cards', label: 'RECIPES'     },
+];
 
 // ── Action popover ─────────────────────────────────────────────────────────────
-const ActionPopover = ({ item, onDrop, onUse, onInspect, onGive, onEnter, onLeave }) => (
+const ORIGIN_META = {
+  stolen:    { label: 'STOLEN',    color: STOLEN_RED    },
+  purchased: { label: 'PURCHASED', color: PURCHASED_GRN },
+};
+
+const ActionPopover = ({ item, isQuest, onDrop, onEat, onLearn, onInspect, onGive, onEnter, onLeave }) => {
+  const def          = getItemDef(item.id);
+  const isFood       = !!(def.hungerRestore);
+  const isRecipeCard = def.category === 'recipe_card';
+  const originMeta   = item.origin ? ORIGIN_META[item.origin] : null;
+  return (
   <div
     onMouseEnter={onEnter}
     onMouseLeave={onLeave}
@@ -34,7 +63,7 @@ const ActionPopover = ({ item, onDrop, onUse, onInspect, onGive, onEnter, onLeav
       transform: 'translateX(-50%)',
       zIndex: 2000,
       background: BG_DARK,
-      border: `1px solid ${BORDER_MED}`,
+      border: `1px solid ${isQuest ? QUEST_GOLD : BORDER_MED}`,
       padding: '10px 12px',
       width: 170,
       boxShadow: '0 -4px 20px rgba(0,0,0,0.25)',
@@ -44,7 +73,25 @@ const ActionPopover = ({ item, onDrop, onUse, onInspect, onGive, onEnter, onLeav
     <div style={{ marginBottom: 8 }}>
       <div style={{ color: TEXT, fontFamily: FONT, fontSize: 9, letterSpacing: '2px', marginBottom: 4 }}>
         {item.name.toUpperCase()}
+        {(item.count ?? 1) > 1 && (
+          <span style={{ color: ACCENT, marginLeft: 6 }}>×{item.count}</span>
+        )}
+        {isQuest && (
+          <span style={{ color: QUEST_GOLD, marginLeft: 6, fontSize: 8, letterSpacing: '1px' }}>QUEST</span>
+        )}
       </div>
+      {originMeta && (
+        <div style={{
+          display: 'inline-block',
+          color: originMeta.color,
+          fontFamily: FONT, fontSize: 7, letterSpacing: '1.5px',
+          border: `1px solid ${originMeta.color}`,
+          padding: '1px 5px',
+          marginBottom: 6,
+        }}>
+          {originMeta.label}
+        </div>
+      )}
       {item.description && (
         <div style={{ color: TEXT_MID, fontFamily: FONT_SER, fontSize: 10, lineHeight: 1.5, fontStyle: 'italic' }}>
           {item.description}
@@ -56,11 +103,12 @@ const ActionPopover = ({ item, onDrop, onUse, onInspect, onGive, onEnter, onLeav
 
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
       {[
-        { label: 'DROP',    fn: onDrop,    color: '#c0392b' },
-        { label: 'USE',     fn: onUse,     color: TEXT_MID  },
+        { label: 'DROP',    fn: onDrop,    color: '#c0392b', hide: isQuest || isRecipeCard },
+        { label: 'EAT',     fn: onEat,     color: '#4a8a6a', hide: !isFood       },
+        { label: 'LEARN',   fn: onLearn,   color: '#4a6a9a', hide: !isRecipeCard },
         { label: 'INSPECT', fn: onInspect, color: TEXT_MID  },
         { label: 'GIVE',    fn: onGive,    color: ACCENT    },
-      ].map(({ label, fn, color }) => (
+      ].filter(btn => !btn.hide).map(({ label, fn, color }) => (
         <button
           key={label}
           onClick={(e) => { e.stopPropagation(); fn(); }}
@@ -81,7 +129,8 @@ const ActionPopover = ({ item, onDrop, onUse, onInspect, onGive, onEnter, onLeav
       ))}
     </div>
   </div>
-);
+  );
+};
 
 // ── Inspect modal ──────────────────────────────────────────────────────────────
 const InspectModal = ({ item, onClose }) => createPortal(
@@ -89,7 +138,7 @@ const InspectModal = ({ item, onClose }) => createPortal(
     onClick={onClose}
     style={{
       position: 'fixed', inset: 0, zIndex: 10100,
-      background: 'rgba(0,0,0,0.85)',
+      background: 'rgba(0,0,0,0.88)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}
   >
@@ -111,16 +160,31 @@ const InspectModal = ({ item, onClose }) => createPortal(
       }}>
         {item.image
           ? <img src={item.image} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
-          : <span style={{ color: ACCENT, fontSize: 32 }}>✦</span>
+          : <span style={{ color: ACCENT, fontSize: 34 }}>✦</span>
         }
       </div>
       <div style={{ color: TEXT, fontFamily: FONT, fontSize: 13, letterSpacing: '3px', marginBottom: 12 }}>
         {item.name.toUpperCase()}
+        {(item.count ?? 1) > 1 && (
+          <span style={{ color: ACCENT, fontSize: 11, marginLeft: 8 }}>×{item.count}</span>
+        )}
       </div>
       <div style={{ color: TEXT_MID, fontFamily: FONT_SER, fontSize: 13, lineHeight: 1.7, fontStyle: 'italic' }}>
         {item.description || 'Nothing remarkable about it.'}
       </div>
-      <div style={{ marginTop: 20, color: TEXT_DIM, fontFamily: FONT, fontSize: 9, letterSpacing: '2px' }}>
+      {item.origin && ORIGIN_META[item.origin] && (
+        <div style={{
+          marginTop: 14,
+          display: 'inline-block',
+          color: ORIGIN_META[item.origin].color,
+          fontFamily: FONT, fontSize: 8, letterSpacing: '2px',
+          border: `1px solid ${ORIGIN_META[item.origin].color}`,
+          padding: '2px 8px',
+        }}>
+          {ORIGIN_META[item.origin].label}
+        </div>
+      )}
+      <div style={{ marginTop: 16, color: TEXT_DIM, fontFamily: FONT, fontSize: 9, letterSpacing: '2px' }}>
         CLICK TO CLOSE
       </div>
     </div>
@@ -128,84 +192,333 @@ const InspectModal = ({ item, onClose }) => createPortal(
   document.body
 );
 
-// ── Single slot ────────────────────────────────────────────────────────────────
-const Slot = ({
-  item, faded, isDropTarget,
-  onMouseDown, onMouseUp,
-  showPopover, onSlotEnter, onSlotLeave,
-  onPopoverEnter, onPopoverLeave,
-  onDrop, onUse, onInspect, onGive,
-}) => (
-  <div
-    style={{ position: 'relative', width: SLOT_SIZE, height: SLOT_SIZE, flexShrink: 0 }}
-    onMouseEnter={onSlotEnter}
-    onMouseLeave={onSlotLeave}
-  >
-    <div
-      onMouseDown={onMouseDown}
-      onMouseUp={onMouseUp}
-      style={{
-        width: '100%', height: '100%',
-        border: `1px solid ${isDropTarget ? ACCENT : item ? BORDER_MED : BORDER}`,
-        background: isDropTarget
-          ? `${ACCENT}18`
-          : item ? BG_FILLED : BG_SLOT,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 4,
-        cursor: item ? 'grab' : 'default',
-        opacity: faded ? 0.25 : 1,
-        transition: 'border-color 0.15s, background 0.15s, opacity 0.2s',
-        userSelect: 'none', boxSizing: 'border-box',
-      }}
-    >
-      {item && (<>
+// ── Filtered tab grid (quest / ingredients / food) ────────────────────────────
+const FilteredGrid = ({ items, onDrop, onEat, onLearn, onInspect, onGive }) => {
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+  const hoverTimer = useRef(null);
+
+  const showPopoverFor = (i) => { clearTimeout(hoverTimer.current); setHoveredIdx(i); };
+  const hidePopover    = ()  => { hoverTimer.current = setTimeout(() => setHoveredIdx(null), 180); };
+  const keepPopover    = ()  => clearTimeout(hoverTimer.current);
+
+  const gridWidth = spanPx(INV_COLS);
+
+  if (items.length === 0) {
+    return (
+      <div style={{ background: BG_GRID, padding: 3, boxShadow: 'inset 0 1px 4px rgba(58,32,16,0.12)' }}>
         <div style={{
-          width: 36, height: 36,
-          background: `${ACCENT}18`,
-          border: `1px solid ${ACCENT}44`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
+          width: gridWidth, padding: '24px 0', textAlign: 'center',
+          color: TEXT_DIM, fontFamily: FONT, fontSize: 9, letterSpacing: '2px',
         }}>
-          {item.image
-            ? <img src={item.image} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
-            : <span style={{ color: ACCENT, fontSize: 15 }}>✦</span>
-          }
+          — nothing here —
         </div>
-        <span style={{
-          color: TEXT_MID, fontSize: 7, fontFamily: FONT,
-          textAlign: 'center', letterSpacing: '0.4px', lineHeight: 1.3,
-          maxWidth: SLOT_SIZE - 8, overflow: 'hidden',
-        }}>
-          {item.name}
-        </span>
-      </>)}
+      </div>
+    );
+  }
+
+  // Pad to a full last row
+  const rows  = Math.ceil(items.length / INV_COLS);
+  const cells = [...items, ...Array(rows * INV_COLS - items.length).fill(null)];
+
+  return (
+    <div style={{ background: BG_GRID, padding: 3, boxShadow: 'inset 0 1px 4px rgba(58,32,16,0.12)' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${INV_COLS}, ${SLOT_SIZE}px)`,
+        gap: GAP,
+        width: gridWidth,
+      }}>
+        {cells.map((item, i) => (
+          <SlotCell
+            key={i}
+            item={item}
+            faded={false}
+            isDropTarget={false}
+            gridStyle={{ gridColumn: `${(i % INV_COLS) + 1}`, gridRow: `${Math.floor(i / INV_COLS) + 1}` }}
+            showPopover={hoveredIdx === i}
+            onSlotEnter={() => { if (item) showPopoverFor(i); }}
+            onSlotLeave={hidePopover}
+            onPopoverEnter={keepPopover}
+            onPopoverLeave={hidePopover}
+            onMouseDown={undefined}
+            onMouseUp={undefined}
+            onDrop={item ? () => onDrop(item) : undefined}
+            onEat={item ? () => onEat(item) : undefined}
+            onLearn={item ? () => onLearn?.(item) : undefined}
+            onInspect={item ? () => onInspect(item) : undefined}
+            onGive={item ? () => onGive(item) : undefined}
+          />
+        ))}
+      </div>
     </div>
+  );
+};
 
-    {showPopover && item && (
-      <ActionPopover
-        item={item}
-        onEnter={onPopoverEnter}
-        onLeave={onPopoverLeave}
-        onDrop={onDrop}
-        onUse={onUse}
-        onInspect={onInspect}
-        onGive={onGive}
-      />
-    )}
-  </div>
-);
+// ── Recipes tab pane ──────────────────────────────────────────────────────────
+const RecipesTabPane = ({ scrollItems, knownRecipes, onLearn, onInspect, onGive, onDrop }) => {
+  const hasScrolls = scrollItems.length > 0;
+  const hasKnown   = knownRecipes.length > 0;
 
-// ── Satchel Popover ────────────────────────────────────────────────────────────
+  if (!hasScrolls && !hasKnown) {
+    return (
+      <div style={{ background: BG_GRID, padding: 3, boxShadow: 'inset 0 1px 4px rgba(58,32,16,0.12)' }}>
+        <div style={{
+          width: spanPx(INV_COLS), padding: '24px 0', textAlign: 'center',
+          color: TEXT_DIM, fontFamily: FONT, fontSize: 9, letterSpacing: '2px',
+        }}>
+          — no recipes found —
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Recipe cards in satchel */}
+      {hasScrolls && (
+        <div>
+          <div style={{
+            fontFamily: FONT, fontSize: 8, letterSpacing: '2px', color: TEXT_DIM,
+            textTransform: 'uppercase', marginBottom: 6,
+          }}>
+            In Your Satchel
+          </div>
+          <FilteredGrid
+            items={scrollItems}
+            onDrop={onDrop}
+            onEat={() => {}}
+            onLearn={onLearn}
+            onInspect={onInspect}
+            onGive={onGive}
+          />
+        </div>
+      )}
+
+      {/* Known recipes reference list */}
+      {hasKnown && (
+        <div>
+          <div style={{
+            fontFamily: FONT, fontSize: 8, letterSpacing: '2px', color: TEXT_DIM,
+            textTransform: 'uppercase', marginBottom: 6,
+          }}>
+            Known Recipes
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {knownRecipes.map(recipeId => {
+              const recipe = RECIPES[recipeId];
+              if (!recipe) return null;
+              return (
+                <div key={recipeId} style={{
+                  background: BG_GRID, border: `1px solid ${BORDER}`,
+                  padding: '10px 12px',
+                }}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                    marginBottom: 6,
+                  }}>
+                    <span style={{ fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px', color: TEXT }}>
+                      {recipe.name.toUpperCase()}
+                    </span>
+                    <span style={{ fontFamily: FONT, fontSize: 7, color: TEXT_DIM, letterSpacing: '1px' }}>
+                      yields {recipe.yields.name} ×{recipe.yields.count}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                    {recipe.ingredients.map(ing => (
+                      <span key={ing.id} style={{
+                        fontFamily: FONT, fontSize: 7, letterSpacing: '1px', color: TEXT_MID,
+                        border: `1px solid ${BORDER}`, padding: '1px 5px',
+                      }}>
+                        {ing.name} ×{ing.count}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{
+                    fontFamily: FONT_SER, fontSize: 10, fontStyle: 'italic',
+                    color: TEXT_DIM, lineHeight: 1.4,
+                  }}>
+                    {recipe.note}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Single slot cell ───────────────────────────────────────────────────────────
+const SlotCell = ({
+  item,
+  faded,
+  isDropTarget,
+  gridStyle,
+  onMouseDown,
+  onMouseUp,
+  onSlotEnter,
+  onSlotLeave,
+  showPopover,
+  onPopoverEnter,
+  onPopoverLeave,
+  onDrop,
+  onEat,
+  onLearn,
+  onInspect,
+  onGive,
+}) => {
+  const def     = item ? getItemDef(item.id) : null;
+  const isQuest = !!def?.questItem;
+  const { w = 1, h = 1 } = def?.size ?? {};
+  const cellW = spanPx(w);
+  const cellH = spanPx(h);
+  const draggable = item && !isQuest;
+
+  // Icon size scales with cell — fills most of the pocket
+  const iconSize = Math.round(Math.min(cellW, cellH) * 0.44);
+
+  return (
+    <div
+      style={{ position: 'relative', width: cellW, height: cellH, flexShrink: 0, ...gridStyle }}
+      onMouseEnter={onSlotEnter}
+      onMouseLeave={onSlotLeave}
+    >
+      <div
+        onMouseDown={draggable ? onMouseDown : undefined}
+        onMouseUp={onMouseUp}
+        style={{
+          width: '100%', height: '100%',
+          border: `1px solid ${
+            isDropTarget ? ACCENT
+            : isQuest    ? QUEST_GOLD
+            : item       ? BORDER_LIT
+            :              BORDER
+          }`,
+          background: isDropTarget
+            ? `${ACCENT}20`
+            : isQuest ? `${QUEST_GOLD}10`
+            : item    ? BG_FILLED
+            :           BG_SLOT,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 3,
+          cursor: draggable ? 'grab' : 'default',
+          opacity: faded ? 0.2 : 1,
+          transition: 'border-color 0.15s, background 0.15s, opacity 0.2s',
+          userSelect: 'none', boxSizing: 'border-box',
+        }}
+      >
+        {item && (<>
+          {/* Icon — sits directly in the pocket, no inner box */}
+          {item.image
+            ? <img
+                src={item.image}
+                style={{ width: iconSize, height: iconSize, objectFit: 'contain', flexShrink: 0 }}
+                alt=""
+              />
+            : <span style={{
+                color: isQuest ? QUEST_GOLD : ACCENT,
+                fontSize: iconSize,
+                lineHeight: 1,
+                flexShrink: 0,
+              }}>✦</span>
+          }
+
+          {/* Name label */}
+          <span style={{
+            color: TEXT_MID,
+            fontSize: 7,
+            fontFamily: FONT,
+            textAlign: 'center',
+            letterSpacing: '0.3px',
+            lineHeight: 1.2,
+            maxWidth: cellW - 8,
+            overflow: 'hidden',
+          }}>
+            {item.name}
+          </span>
+
+          {/* Quest badge — top-left */}
+          {isQuest && (
+            <div style={{
+              position: 'absolute', top: 3, left: 3,
+              background: QUEST_GOLD,
+              color: '#fff',
+              fontFamily: FONT, fontSize: 7,
+              padding: '1px 3px',
+              lineHeight: 1.4,
+              pointerEvents: 'none',
+            }}>Q</div>
+          )}
+
+          {/* Origin badge — top-right */}
+          {item.origin === 'stolen' && (
+            <div style={{
+              position: 'absolute', top: 3, right: 3,
+              background: STOLEN_RED,
+              color: '#fff',
+              fontFamily: FONT, fontSize: 7,
+              padding: '1px 3px',
+              lineHeight: 1.4,
+              pointerEvents: 'none',
+            }}>S</div>
+          )}
+          {item.origin === 'purchased' && (
+            <div style={{
+              position: 'absolute', top: 3, right: 3,
+              background: PURCHASED_GRN,
+              color: '#fff',
+              fontFamily: FONT, fontSize: 7,
+              padding: '1px 3px',
+              lineHeight: 1.4,
+              pointerEvents: 'none',
+            }}>P</div>
+          )}
+
+          {/* Stack count — bottom-right */}
+          {(item.count ?? 1) > 1 && (
+            <div style={{
+              position: 'absolute', bottom: 3, right: 4,
+              color: ACCENT,
+              fontFamily: FONT, fontSize: 8,
+              lineHeight: 1,
+              pointerEvents: 'none',
+            }}>
+              ×{item.count}
+            </div>
+          )}
+        </>)}
+      </div>
+
+      {showPopover && item && (
+        <ActionPopover
+          item={item}
+          isQuest={isQuest}
+          onEnter={onPopoverEnter}
+          onLeave={onPopoverLeave}
+          onDrop={onDrop}
+          onEat={onEat}
+          onLearn={onLearn}
+          onInspect={onInspect}
+          onGive={onGive}
+        />
+      )}
+    </div>
+  );
+};
+
+// ── Satchel inventory UI ───────────────────────────────────────────────────────
 export const InventoryUI = ({ gameState, setGameState, onClose }) => {
-  const inventory = gameState.inventory || [];
+  const rawInventory = gameState.inventory || [];
+  const grid = Array.from({ length: INV_TOTAL }, (_, i) => rawInventory[i] ?? null);
 
   const [drag,        setDrag]        = useState(null);
   const [dropTarget,  setDropTarget]  = useState(null);
   const [hoveredSlot, setHoveredSlot] = useState(null);
   const [inspectItem, setInspectItem] = useState(null);
+  const [activeTab,   setActiveTab]   = useState('satchel');
   const hoverTimer = useRef(null);
 
-  // Global mouse tracking during drag
   useEffect(() => {
     if (!drag) return;
     const move = (e) => setDrag(d => d ? { ...d, x: e.clientX, y: e.clientY } : null);
@@ -222,19 +535,27 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
   const hidePopover    = ()  => { hoverTimer.current = setTimeout(() => setHoveredSlot(null), 180); };
   const keepPopover    = ()  => clearTimeout(hoverTimer.current);
 
+  const dragDef   = drag ? getItemDef(drag.item.id) : null;
+  const { w: dw = 1, h: dh = 1 } = dragDef?.size ?? {};
+  const clearedGrid = drag ? removeFromGrid(grid, drag.anchorIdx) : grid;
+  const dropValid   = dropTarget !== null && drag && canPlace(clearedGrid, dropTarget, dw, dh);
+  const dropCells   = dropValid ? new Set(getOccupied(dropTarget, dw, dh)) : new Set();
+
   const dropIntoSlot = (toIndex) => {
     if (!drag) return;
-    if (drag.fromIndex === toIndex) { setDrag(null); setDropTarget(null); return; }
-    const newInv = Array.from({ length: TOTAL_SLOTS }, (_, i) => inventory[i] ?? null);
-    [newInv[drag.fromIndex], newInv[toIndex]] = [newInv[toIndex], newInv[drag.fromIndex]];
-    setGameState(p => ({ ...p, inventory: newInv }));
+    if (drag.anchorIdx === toIndex) { setDrag(null); setDropTarget(null); return; }
+    const def     = getItemDef(drag.item.id);
+    const { w, h } = def.size;
+    const cleared = removeFromGrid(grid, drag.anchorIdx);
+    if (!canPlace(cleared, toIndex, w, h)) { setDrag(null); setDropTarget(null); return; }
+    setGameState(p => ({ ...p, inventory: placeAtGrid(cleared, toIndex, drag.item) }));
     setDrag(null); setDropTarget(null);
   };
 
-  const dropItem = (slotIndex) => {
-    const newInv = Array.from({ length: TOTAL_SLOTS }, (_, i) => inventory[i] ?? null);
-    newInv[slotIndex] = null;
-    setGameState(p => ({ ...p, inventory: newInv }));
+  const dropItem = (anchorIdx) => {
+    const slot = grid[anchorIdx];
+    if (!slot || getItemDef(slot.id).questItem) return;
+    setGameState(p => ({ ...p, inventory: removeFromGrid(grid, anchorIdx) }));
     setHoveredSlot(null);
   };
 
@@ -243,10 +564,64 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
     onClose();
   };
 
+  const learnRecipe = (anchorIdx) => {
+    const slot = grid[anchorIdx];
+    if (!slot) return;
+    const def = getItemDef(slot.id);
+    if (!def.teachesRecipe) return;
+    setGameState(p => {
+      const inv   = Array.from({ length: INV_TOTAL }, (_, i) => (p.inventory || [])[i] ?? null);
+      inv[anchorIdx] = null;
+      const known = p.knownRecipes || [];
+      if (known.includes(def.teachesRecipe)) return { ...p, inventory: inv };
+      return { ...p, inventory: inv, knownRecipes: [...known, def.teachesRecipe] };
+    });
+    setHoveredSlot(null);
+  };
+
+  const eatItem = (anchorIdx) => {
+    const slot = grid[anchorIdx];
+    if (!slot) return;
+    const restore = getItemDef(slot.id).hungerRestore ?? 0;
+    setGameState(p => {
+      const inv = Array.from({ length: INV_TOTAL }, (_, i) => (p.inventory || [])[i] ?? null);
+      if ((slot.count ?? 1) > 1) {
+        inv[anchorIdx] = { ...slot, count: slot.count - 1 };
+      } else {
+        // remove anchor and all __ref covers
+        inv.forEach((s, i) => {
+          if (i === anchorIdx || (s?.__ref === anchorIdx)) inv[i] = null;
+        });
+      }
+      return {
+        ...p,
+        inventory: inv,
+        hunger: Math.min(100, (p.hunger ?? 100) + restore),
+      };
+    });
+    setHoveredSlot(null);
+  };
+
   const zoom      = useTextScale();
-  const grid      = Array.from({ length: TOTAL_SLOTS }, (_, i) => inventory[i] ?? null);
-  const itemCount = grid.filter(Boolean).length;
-  const gridWidth = INV_COLS * (SLOT_SIZE + GAP) - GAP;
+  const itemCount = countItems(grid);
+  const gridWidth = spanPx(INV_COLS);
+
+  // Anchor items for filtered tabs
+  const anchorItems = grid
+    .map((slot, i) => (slot && slot.__ref === undefined ? { ...slot, _anchorIdx: i } : null))
+    .filter(Boolean);
+
+  const tabItems = {
+    quest:        anchorItems.filter(it => !!getItemDef(it.id).questItem),
+    ingredients:  anchorItems.filter(it => getItemDef(it.id).category === 'ingredient'),
+    recipes:      anchorItems.filter(it => getItemDef(it.id).category === 'recipe'),
+    recipe_cards: anchorItems.filter(it => getItemDef(it.id).category === 'recipe_card'),
+  };
+
+  const knownRecipes = gameState.knownRecipes || [];
+  const activeCount  = activeTab === 'satchel'      ? itemCount
+    : activeTab === 'recipe_cards' ? knownRecipes.length
+    : (tabItems[activeTab]?.length ?? 0);
 
   return (
     <>
@@ -256,78 +631,149 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
         borderLeft: `1px solid ${BORDER_MED}`,
         borderRight: `1px solid ${BORDER_MED}`,
         boxShadow: '4px -8px 40px rgba(0,0,0,0.4)',
-        padding: '18px 20px 20px',
+        padding: '12px 14px 14px',
         zoom,
       }}>
-        {/* Header */}
+        {/* Tab bar */}
+        <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, marginBottom: 10 }}>
+          {TABS.map(tab => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  background: 'transparent', border: 'none',
+                  borderBottom: `2px solid ${active ? ACCENT : 'transparent'}`,
+                  color: active ? TEXT : TEXT_DIM,
+                  fontFamily: FONT, fontSize: 8, letterSpacing: '1.5px',
+                  padding: '0 10px 7px', cursor: 'pointer',
+                  marginBottom: -1,
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sub-header */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          marginBottom: 14, paddingBottom: 10,
-          borderBottom: `1px solid ${BORDER}`,
+          marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${BORDER}`,
         }}>
           <span style={{ color: TEXT, fontFamily: FONT, fontSize: 11, letterSpacing: '3px' }}>
-            SATCHEL
+            {TABS.find(t => t.id === activeTab)?.label}
           </span>
           <span style={{ color: TEXT_DIM, fontFamily: FONT, fontSize: 8, letterSpacing: '2px' }}>
-            {itemCount} / {TOTAL_SLOTS}
+            {activeCount} item{activeCount !== 1 ? 's' : ''}
           </span>
         </div>
 
-        {/* Grid */}
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: GAP,
-          width: gridWidth,
-          overflow: 'visible',
-        }}>
-          {grid.map((item, i) => (
-            <Slot
-              key={i}
-              item={item}
-              faded={drag?.fromIndex === i}
-              isDropTarget={!!drag && dropTarget === i && drag.fromIndex !== i}
-              showPopover={hoveredSlot === i && !drag}
-              onSlotEnter={() => { showPopoverFor(i); if (drag) setDropTarget(i); }}
-              onSlotLeave={() => { hidePopover(); setDropTarget(null); }}
-              onPopoverEnter={keepPopover}
-              onPopoverLeave={hidePopover}
-              onMouseDown={item ? (e) => {
-                e.preventDefault();
-                setHoveredSlot(null);
-                setDrag({ item, fromIndex: i, x: e.clientX, y: e.clientY });
-              } : undefined}
-              onMouseUp={(e) => { e.stopPropagation(); dropIntoSlot(i); }}
-              onDrop={() => dropItem(i)}
-              onUse={() => { /* TODO */ }}
-              onInspect={() => { setHoveredSlot(null); setInspectItem(item); }}
-              onGive={() => giveItem(item)}
+        {activeTab === 'satchel' ? (
+          /* Grid — subtle inset to read as a contained pocket area */
+          <div style={{
+            background: BG_GRID, padding: 3,
+            boxShadow: 'inset 0 1px 4px rgba(58,32,16,0.12)',
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${INV_COLS}, ${SLOT_SIZE}px)`,
+              gridTemplateRows: `repeat(${INV_ROWS}, ${SLOT_SIZE}px)`,
+              gap: GAP, width: gridWidth,
+            }}>
+              {Array.from({ length: INV_TOTAL }, (_, i) => {
+                const slot = grid[i];
+                if (slot !== null && slot.__ref !== undefined) return null;
+                const item = slot;
+                const { row, col } = toRC(i);
+                return (
+                  <SlotCell
+                    key={i}
+                    item={item}
+                    faded={drag?.anchorIdx === i}
+                    isDropTarget={dropCells.has(i)}
+                    gridStyle={{ gridColumn: `${col + 1}`, gridRow: `${row + 1}` }}
+                    showPopover={hoveredSlot === i && !drag}
+                    onSlotEnter={() => { if (drag) setDropTarget(i); else showPopoverFor(i); }}
+                    onSlotLeave={() => { if (drag) setDropTarget(null); else hidePopover(); }}
+                    onPopoverEnter={keepPopover}
+                    onPopoverLeave={hidePopover}
+                    onMouseDown={item ? (e) => {
+                      e.preventDefault();
+                      setHoveredSlot(null);
+                      setDrag({ item, anchorIdx: i, x: e.clientX, y: e.clientY });
+                    } : undefined}
+                    onMouseUp={(e) => { e.stopPropagation(); dropIntoSlot(i); }}
+                    onDrop={() => dropItem(i)}
+                    onEat={() => eatItem(i)}
+                    onLearn={() => learnRecipe(i)}
+                    onInspect={() => { setHoveredSlot(null); setInspectItem(item); }}
+                    onGive={() => giveItem(item)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          activeTab === 'recipe_cards' ? (
+            <RecipesTabPane
+              scrollItems={tabItems.recipe_cards ?? []}
+              knownRecipes={knownRecipes}
+              onLearn={(item) => learnRecipe(item._anchorIdx)}
+              onInspect={(item) => setInspectItem(item)}
+              onGive={(item) => giveItem(item)}
+              onDrop={(item) => dropItem(item._anchorIdx)}
             />
-          ))}
-        </div>
+          ) : (
+          <FilteredGrid
+            items={tabItems[activeTab] ?? []}
+            onDrop={(item) => dropItem(item._anchorIdx)}
+            onEat={(item) => eatItem(item._anchorIdx)}
+            onLearn={(item) => learnRecipe(item._anchorIdx)}
+            onInspect={(item) => setInspectItem(item)}
+            onGive={(item) => giveItem(item)}
+          />
+          )
+        )}
       </div>
 
-      {/* Drag ghost — needs to float above everything */}
-      {drag && createPortal(
-        <div style={{
-          position: 'fixed',
-          left: drag.x - SLOT_SIZE / 2, top: drag.y - SLOT_SIZE / 2,
-          pointerEvents: 'none', zIndex: 10001,
-          opacity: 0.85, transform: 'scale(1.06)',
-        }}>
-          <div style={{
-            width: SLOT_SIZE, height: SLOT_SIZE,
-            border: `1px solid ${ACCENT}`,
-            background: BG_DARK,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 4,
-          }}>
-            <span style={{ color: ACCENT, fontSize: 15 }}>✦</span>
-            <span style={{ color: TEXT_MID, fontSize: 7, fontFamily: FONT }}>{drag.item.name}</span>
-          </div>
-        </div>,
+      {/* Drag ghost — only active on satchel tab */}
+      {drag && activeTab === 'satchel' && createPortal(
+        (() => {
+          const { w, h } = getItemDef(drag.item.id).size;
+          const gw = spanPx(w);
+          const gh = spanPx(h);
+          const iconSize = Math.round(Math.min(gw, gh) * 0.44);
+          return (
+            <div style={{
+              position: 'fixed',
+              left: drag.x - gw / 2, top: drag.y - gh / 2,
+              width: gw, height: gh,
+              pointerEvents: 'none', zIndex: 10001,
+              opacity: 0.9, transform: 'scale(1.07)',
+            }}>
+              <div style={{
+                width: '100%', height: '100%',
+                border: `1px solid ${ACCENT}`, background: BG_DARK,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 3,
+              }}>
+                <span style={{ color: ACCENT, fontSize: iconSize, lineHeight: 1 }}>✦</span>
+                <span style={{ color: TEXT_MID, fontSize: 7, fontFamily: FONT, textAlign: 'center', maxWidth: gw - 8 }}>
+                  {drag.item.name}
+                </span>
+                {(drag.item.count ?? 1) > 1 && (
+                  <span style={{ color: ACCENT, fontFamily: FONT, fontSize: 8 }}>×{drag.item.count}</span>
+                )}
+              </div>
+            </div>
+          );
+        })(),
         document.body
       )}
 
-      {/* Inspect modal */}
       {inspectItem && (
         <InspectModal item={inspectItem} onClose={() => setInspectItem(null)} />
       )}

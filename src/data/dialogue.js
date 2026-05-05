@@ -251,5 +251,62 @@ export const DIALOGUE_DATA = {
     introspection: "CRITICAL FAILURE: Suspicion is high. Your disguise is losing its grip on his consciousness.",
     impact: -20,
     options: [{ text: "[Try to recover] Wait, Silas...", next: "silas_hub" }]
-  }
+  },
+
+  // ── OVERSEER: STOLEN GOODS DETECTION ─────────────────────────────────────────
+
+  "overseer_stolen_goods_check": {
+    speaker: "The Overseer",
+    side: "right",
+    text: "Hold on there. I've been watching you — going through the rooms, poking around where you don't belong. Empty that bag. Right now.",
+    introspection: "His eyes are on your satchel. He's not asking.",
+    options: [
+      {
+        text: "(Hand over everything stolen.)",
+        next: "overseer_stolen_comply",
+        clearStolen: true,
+        impact: -5,
+      },
+      {
+        text: "'These are my own things, sir. I brought them with me.'",
+        next: "overseer_stolen_bluff_success",
+        requireFlag: "stolen_bluff_viable",
+      },
+      {
+        text: "'These are my own things, sir. I brought them with me.'",
+        next: "overseer_stolen_caught",
+        requireNoFlag: "stolen_bluff_viable",
+      },
+    ]
+  },
+
+  "overseer_stolen_comply": {
+    speaker: "The Overseer",
+    side: "right",
+    text: "That's what I thought. Now get out of my sight before I change my mind about letting you walk.",
+    introspection: "He takes it all without looking twice. The items are gone. You are dismissed.",
+    options: [
+      { text: "[Leave]", next: null },
+    ]
+  },
+
+  "overseer_stolen_bluff_success": {
+    speaker: "The Overseer",
+    side: "right",
+    text: "...*Long look.* Go on then. But I'll be keeping both eyes on you. Don't let me catch you drifting again.",
+    introspection: "He lets you pass. For now. Your composure held — just barely.",
+    options: [
+      { text: "[Leave quietly]", next: null },
+    ]
+  },
+
+  "overseer_stolen_caught": {
+    speaker: "The Overseer",
+    side: "right",
+    text: "Don't lie to me, girl. I can see it on your face. You think I don't know thieving hands when I see them? You'll be answering for this in irons.",
+    introspection: "He calls for the others. There is no talking your way out of this.",
+    options: [
+      { text: "[You are taken.]", next: null, clearStolen: true, impact: -30, flagTrigger: "detained_by_overseer" },
+    ]
+  },
 };

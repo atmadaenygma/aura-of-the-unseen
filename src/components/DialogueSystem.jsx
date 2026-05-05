@@ -152,14 +152,28 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
 
     // Apply any state mutations from this choice
     const updates = { ...gameState };
-    if (choice.flagTrigger) updates.flags     = { ...updates.flags, [choice.flagTrigger]: true };
+    if (choice.flagTrigger) updates.flags          = { ...updates.flags, [choice.flagTrigger]: true };
     if (choice.impact)      updates.morphStability = Math.max(0, updates.morphStability + choice.impact);
-    if (choice.rewardMoney) updates.money    += choice.rewardMoney;
+    if (choice.rewardMoney) updates.money         += choice.rewardMoney;
     // takeItem — remove a specific item id from inventory when the choice is made
     if (choice.takeItem) {
       const inv = Array.from({ length: 20 }, (_, i) => (updates.inventory || [])[i] ?? null);
       const idx = inv.findIndex(it => it?.id === choice.takeItem);
       if (idx !== -1) inv[idx] = null;
+      updates.inventory = inv;
+    }
+    // clearStolen — remove all items with origin === 'stolen' (anchors + their __ref covers)
+    if (choice.clearStolen) {
+      const inv = Array.from({ length: 20 }, (_, i) => (updates.inventory || [])[i] ?? null);
+      const stolenAnchors = new Set();
+      inv.forEach((slot, i) => {
+        if (slot && slot.__ref === undefined && slot.origin === 'stolen') stolenAnchors.add(i);
+      });
+      inv.forEach((slot, i) => {
+        if (!slot) return;
+        if (stolenAnchors.has(i)) { inv[i] = null; return; }
+        if (slot.__ref !== undefined && stolenAnchors.has(slot.__ref)) inv[i] = null;
+      });
       updates.inventory = inv;
     }
     setGameState(updates);

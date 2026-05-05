@@ -580,10 +580,11 @@ const CONCEALMENT_REQUIRED = new Set([
   'docks',
 ]);
 
-const AuraStatsBox = ({ morphStability, vigor, activeMorph, activeAbility, currentRoom }) => {
+const AuraStatsBox = ({ morphStability, vigor, hunger, activeMorph, activeAbility, currentRoom }) => {
   const [hovered, setHovered] = useState(false);
   const zoom = useTextScale();
   const stabilityColor  = morphStability < 25 ? '#c0392b' : morphStability < 50 ? '#b08030' : '#2a5a3a';
+  const hungerColor     = hunger < 25 ? '#c0392b' : hunger < 55 ? '#b08030' : '#2a7a5a';
   const isIdle          = !activeMorph && (!activeAbility || activeAbility === 'NONE');
   const inDangerZone    = CONCEALMENT_REQUIRED.has(currentRoom);
 
@@ -613,6 +614,7 @@ const AuraStatsBox = ({ morphStability, vigor, activeMorph, activeAbility, curre
         {[
           { label: 'Morph Stability', value: morphStability, color: stabilityColor },
           { label: 'Vigor',           value: vigor,          color: '#2a7a5a'       },
+          { label: 'Hunger',          value: hunger ?? 100,  color: hungerColor     },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ marginBottom: 10 }}>
             <div style={{
@@ -659,8 +661,9 @@ const AuraStatsBox = ({ morphStability, vigor, activeMorph, activeAbility, curre
     cursor: 'default',
   }}>
     {[
-      { label: 'VIGOR',     value: vigor,     color: '#2a7a5a' },
-      { label: 'MORPH STABILITY', value: morphStability, color: morphStability < 25 ? '#c0392b' : '#2a5a3a' },
+      { label: 'VIGOR',           value: vigor,          color: '#2a7a5a'    },
+      { label: 'MORPH STABILITY', value: morphStability, color: stabilityColor },
+      { label: 'HUNGER',          value: hunger ?? 100,  color: hungerColor  },
     ].map(({ label, value, color }) => (
       <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
         <span style={{
@@ -716,7 +719,7 @@ export const HUD = ({
   onReset,
   onDebug,
 }) => {
-  const { pendingGive, nearbyNPC, nearbyEntity, morphStability = 100, vigor = 100, activeMorph = null, activeAbility = 'NONE', currentRoom } = gameState;
+  const { pendingGive, nearbyNPC, nearbyEntity, morphStability = 100, vigor = 100, hunger = 100, activeMorph = null, activeAbility = 'NONE', currentRoom } = gameState;
 
   const zoom = useTextScale();
   const { connected: gamepadConnected, cursorActive } = useGamepadConnected();
@@ -733,30 +736,30 @@ export const HUD = ({
   const satchelBtnRef = useRef(null);
   const statusBtnRef  = useRef(null);
 
-  // Known panel content dimensions (design-space px, no zoom).
-  // y is fixed so the panel bottom sits flush above the HUD bar (design y 1032 = 1080-48).
-  // x is computed at open-time from the button's screen rect → design space.
+  // Panel widths (physical px) and approximate heights for default placement.
+  // Panels open with their bottom flush against the top of the HUD bar.
   const PANEL_META = {
-    menu:    { w: 200, y: 798 },   // ~210px content
-    journal: { w: 700, y: 388 },   // 600px maxHeight + header
-    satchel: { w: 330, y: 518 },   // 5-row grid + header
-    status:  { w: 860, y: 388 },   // fixed 620px
+    menu:    { w: 200, h: 260 },
+    journal: { w: 700, h: 640 },
+    satchel: { w: 295, h: 430 },
+    status:  { w: 860, h: 660 },
   };
 
-  // Convert a button's screen-space rect to design-space x center, then
-  // clamp so the panel stays within the 1920px canvas.
+  // Returns a default {x, y} in physical screen space.
+  // x is centred under the button that opened the panel; y places the panel
+  // bottom flush against the HUD bar (window.innerHeight - HUD_HEIGHT).
   const getDefaultPos = (key) => {
-    const meta = PANEL_META[key] ?? { w: 300, y: 400 };
+    const meta   = PANEL_META[key] ?? { w: 300, h: 400 };
     const btnRef = { menu: menuBtnRef, journal: journalBtnRef, satchel: satchelBtnRef, status: statusBtnRef }[key];
+    let cx = window.innerWidth / 2;
     if (btnRef?.current) {
-      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-      const ox    = (window.innerWidth - 1920 * scale) / 2;
-      const rect  = btnRef.current.getBoundingClientRect();
-      const cx    = (rect.left + rect.width / 2 - ox) / scale;
-      return { x: Math.max(10, Math.min(1910 - meta.w, cx - meta.w / 2)), y: meta.y };
+      const rect = btnRef.current.getBoundingClientRect();
+      cx = rect.left + rect.width / 2;
     }
-    // Fallback: center panel horizontally
-    return { x: Math.max(10, Math.min(1910 - meta.w, 960 - meta.w / 2)), y: meta.y };
+    return {
+      x: Math.max(10, Math.min(window.innerWidth  - meta.w - 10, cx - meta.w / 2)),
+      y: Math.max(10, window.innerHeight - HUD_HEIGHT - meta.h - 8),
+    };
   };
 
   const bringToFront = (key) => { zCounter.current += 1; setZMap(m => ({ ...m, [key]: zCounter.current })); };
@@ -917,7 +920,7 @@ export const HUD = ({
         </button>
 
         {/* STATS BOX — vigor + morphStability with aura alert popover (hover, unchanged) */}
-        <AuraStatsBox morphStability={morphStability} vigor={vigor} activeMorph={activeMorph} activeAbility={activeAbility} currentRoom={currentRoom} />
+        <AuraStatsBox morphStability={morphStability} vigor={vigor} hunger={hunger} activeMorph={activeMorph} activeAbility={activeAbility} currentRoom={currentRoom} />
 
         {/* SATCHEL — click to open */}
         <button

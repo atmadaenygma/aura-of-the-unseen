@@ -11,16 +11,23 @@ import { TextScaleContext } from './context/TextScaleContext';
 const DESIGN_W = 1920;
 const DESIGN_H = 1080;
 
+// Physical height reserved for the HUD bar — must match HUD_HEIGHT in HUD.jsx.
+// The game canvas is constrained to the space above this so the HUD never
+// overlaps gameplay content.
+const HUD_H = 48;
+
 function GameViewport({ children }) {
   const [viewport, setViewport] = useState({ scale: 1, x: 0, y: 0 });
 
   useEffect(() => {
     const compute = () => {
-      const scale = Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
+      // Only use the screen area above the HUD bar for scaling.
+      const availH = window.innerHeight - HUD_H;
+      const scale  = Math.min(window.innerWidth / DESIGN_W, availH / DESIGN_H);
       setViewport({
         scale,
-        x: Math.floor((window.innerWidth  - DESIGN_W * scale) / 2),
-        y: Math.floor((window.innerHeight - DESIGN_H * scale) / 2),
+        x: Math.floor((window.innerWidth - DESIGN_W * scale) / 2),
+        y: Math.floor((availH            - DESIGN_H * scale) / 2),
       });
     };
     compute();
@@ -29,8 +36,8 @@ function GameViewport({ children }) {
   }, []);
 
   return (
-    // Outer shell — fills the physical screen, blacks out letterbox bars
-    <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
+    // Outer shell — covers only the area above the HUD bar.
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: HUD_H, background: '#000', overflow: 'hidden' }}>
       {/* Inner canvas — fixed design size, CSS-scaled to fit */}
       <div style={{
         position: 'absolute',
@@ -40,8 +47,6 @@ function GameViewport({ children }) {
         transform: `scale(${viewport.scale})`,
         left: viewport.x,
         top:  viewport.y,
-        // position:fixed children inside a transformed ancestor are re-contained
-        // to this element, so Stage/HUD/DialogueSystem all live in design space.
         overflow: 'hidden',
       }}>
         {children}
@@ -77,6 +82,9 @@ const INITIAL_STATE = {
   knowledge: {},
   mayaMood: 50,
   npcRelationships: {},
+  integrity: 50,
+  hunger: 100,
+  knownRecipes: [],
   equippedAbility: null,
   abilityLevels: { genetic_memory: 1, nerve_sense: 1, social_crypsis: 1, mimicry: 1 },
   abilityXP:     { genetic_memory: 0, nerve_sense: 0, social_crypsis: 0, mimicry: 0 },
@@ -93,6 +101,9 @@ const hydrateLoad = (saved) => ({
   knowledge:        saved.knowledge       || {},
   mayaMood:         saved.mayaMood        ?? 50,
   npcRelationships: saved.npcRelationships || {},
+  integrity:        saved.integrity        ?? 50,
+  hunger:           saved.hunger           ?? 100,
+  knownRecipes:     Array.isArray(saved.knownRecipes) ? saved.knownRecipes : [],
   activeAbility:    saved.activeAbility    || 'NONE',
   equippedAbility:  saved.equippedAbility  ?? null,
   unlockedMorphs:   Array.isArray(saved.unlockedMorphs) ? saved.unlockedMorphs : [],
@@ -163,16 +174,19 @@ export default function App() {
 
   return (
     <TextScaleContext.Provider value={(gameState.textScale ?? 100) / 100}>
-    <GameViewport>
-      <Stage
-        key={gameState.currentRoom}
-        locationID={gameState.currentRoom}
-        manifest={currentManifest}
-        gameState={gameState}
-        setGameState={setGameState}
-        debugMode={debugMode}
-      />
+      <GameViewport>
+        <Stage
+          key={gameState.currentRoom}
+          locationID={gameState.currentRoom}
+          manifest={currentManifest}
+          gameState={gameState}
+          setGameState={setGameState}
+          debugMode={debugMode}
+        />
+      </GameViewport>
 
+      {/* HUD lives outside GameViewport so it occupies its own physical strip
+          at the bottom of the screen and never overlaps gameplay content. */}
       <HUD
         gameState={gameState}
         setGameState={setGameState}
@@ -180,7 +194,6 @@ export default function App() {
         onReset={handleReset}
         onDebug={() => setDebugMode(p => !p)}
       />
-    </GameViewport>
     </TextScaleContext.Provider>
   );
 }

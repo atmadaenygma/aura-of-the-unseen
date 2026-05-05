@@ -82,7 +82,7 @@ const SectionLabel = ({ children }) => (
 
 // ── SELF tab ───────────────────────────────────────────────────────────────────
 const SelfPane = ({ gameState }) => {
-  const { morphStability = 100, vigor = 100, mayaMood = 50, activeMorph, unlockedMorphs = [] } = gameState;
+  const { morphStability = 100, vigor = 100, hunger = 100, mayaMood = 50, activeMorph, unlockedMorphs = [] } = gameState;
   const mood           = getMood(mayaMood);
   const activeMorphData = unlockedMorphs.find(m => m.id === activeMorph);
 
@@ -120,7 +120,8 @@ const SelfPane = ({ gameState }) => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <SectionLabel>Vitals</SectionLabel>
         <StatBar label="Morph Stability" value={morphStability} color={morphStability < 25 ? '#c0392b' : ACCENT} />
-        <StatBar label="Vigor"     value={vigor}     color="#4a8a6a" />
+        <StatBar label="Vigor"          value={vigor}          color="#4a8a6a" />
+        <StatBar label="Hunger"         value={hunger}         color={hunger < 25 ? '#c0392b' : hunger < 55 ? '#b08030' : '#4a8a6a'} />
       </div>
 
       {/* Mood */}

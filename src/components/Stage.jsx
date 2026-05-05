@@ -6,6 +6,7 @@ import { NPC } from './NPC';
 import { DebugOverlay } from './DebugOverlay';
 import { DialogueSystem } from './DialogueSystem';
 import { LootUI } from './LootUI';
+import { CookingUI } from './CookingUI';
 
 /**
  * AURA OF THE UNSEEN: MASTER STAGE ENGINE v4.5
@@ -18,6 +19,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   const [activeArtifact, setActiveArtifact] = useState(null);
   const [activeDialogue, setActiveDialogue] = useState(null);
   const [activeLoot,     setActiveLoot]     = useState(null);
+  const [activeCooking,  setActiveCooking]  = useState(null);
   const [activeBark,     setActiveBark]     = useState({ id: null, text: '' });
   const [nearbyEntity,   setNearbyEntity]   = useState(null);
   const [playerCoords,   setPlayerCoords]   = useState({ x: 640, y: 680, dir: 'DOWN' });
@@ -224,24 +226,36 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           let takesItem = false;
           let auraFails = false;
           let suspDelta = 0;
+          let giftEffect = null;
 
           if (specific) {
-            barkText  = specific.text;
-            takesItem = specific.takes;
+            barkText   = specific.text;
+            takesItem  = specific.takes;
+            giftEffect = specific.giftEffect ?? null;
           } else {
-            const pool = npcData?.gives?.defaultBarks || ['...'];
-            barkText   = pool[Math.floor(Math.random() * pool.length)];
+            // Check if this is a stolen item being given to a friendly NPC with stolenBarks
+            const isStolen = item.origin === 'stolen';
+            const stolenBarks = npcData?.gives?.stolenBarks;
+            if (isStolen && stolenBarks?.length) {
+              barkText   = stolenBarks[Math.floor(Math.random() * stolenBarks.length)];
+              takesItem  = npcData.gives.stolenTakes ?? true;
+              giftEffect = npcData.gives.stolenGiftEffect ?? null;
+            } else {
+              const pool = npcData?.gives?.defaultBarks || ['...'];
+              barkText   = pool[Math.floor(Math.random() * pool.length)];
+              giftEffect = npcData?.gives?.defaultGiftEffect ?? null;
 
-            if (suspCfg) {
-              const curSusp  = gameStateRef.current.npcSuspicion?.[entity.id] || 0;
-              const nextSusp = curSusp + (suspCfg.gainPerGive ?? 1);
-              suspDelta      = suspCfg.gainPerGive ?? 1;
-              if (nextSusp >= suspCfg.threshold) {
-                barkText  = suspCfg.failureBark;
-                auraFails = true;
-                suspDelta = -curSusp;
-              } else if (nextSusp >= suspCfg.threshold - 1) {
-                barkText = suspCfg.warningBark || barkText;
+              if (suspCfg) {
+                const curSusp  = gameStateRef.current.npcSuspicion?.[entity.id] || 0;
+                const nextSusp = curSusp + (suspCfg.gainPerGive ?? 1);
+                suspDelta      = suspCfg.gainPerGive ?? 1;
+                if (nextSusp >= suspCfg.threshold) {
+                  barkText  = suspCfg.failureBark;
+                  auraFails = true;
+                  suspDelta = -curSusp;
+                } else if (nextSusp >= suspCfg.threshold - 1) {
+                  barkText = suspCfg.warningBark || barkText;
+                }
               }
             }
           }
@@ -265,6 +279,17 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
               }],
             };
             if (auraFails) next.morphStability = Math.max(0, p.morphStability - 25);
+            if (takesItem && giftEffect) {
+              if (giftEffect.trust) {
+                next.npcRelationships = {
+                  ...(p.npcRelationships || {}),
+                  [npcId]: Math.min(100, ((p.npcRelationships || {})[npcId] ?? 50) + giftEffect.trust),
+                };
+              }
+              if (giftEffect.integrity) {
+                next.integrity = Math.min(100, Math.max(0, (p.integrity ?? 50) + giftEffect.integrity));
+              }
+            }
             if (takesItem) {
               const inv = Array.from({ length: 20 }, (_, i) => p.inventory[i] ?? null);
               const idx = inv.findIndex(it => it?.id === item.id);
@@ -274,6 +299,28 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
             return next;
           });
           return;
+        }
+
+        // ── STOLEN GOODS DETECTION (authority NPCs) ──────────────────────────
+        // Check before normal dialogue — if the overseer/authority NPC notices
+        // stolen items, they intercept the interaction with a challenge.
+        const npcDataForCheck = Object.values(manifest.npcs).find(n => n.id === entity.id);
+        if (npcDataForCheck?.role === 'authority') {
+          const inv       = gameStateRef.current.inventory || [];
+          const stolen    = inv.filter(it => it && it.__ref === undefined && it.origin === 'stolen');
+          if (stolen.length > 0) {
+            const stability = gameStateRef.current.morphStability ?? 100;
+            const risk = stability < 25 ? 0.80
+                       : stability < 50 ? 0.55
+                       : stability < 75 ? 0.25
+                       : 0.10;
+            if (Math.random() < risk) {
+              const canBluff = stability >= 70;
+              setGameState(p => ({ ...p, flags: { ...p.flags, stolen_bluff_viable: canBluff } }));
+              setActiveDialogue('overseer_stolen_goods_check');
+              return;
+            }
+          }
         }
 
         // ── NORMAL NPC INTERACTION ───────────────────────────────────────────
@@ -290,6 +337,10 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
       } else if (entity.logicType === 'ARTIFACT') {
         if (entity.type === 'CONTAINER') {
           setActiveLoot(entity);
+          return;
+        }
+        if (entity.type === 'COOKING') {
+          setActiveCooking(entity);
           return;
         }
         setActiveArtifact(entity);
@@ -351,7 +402,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           checkCollision={checkCollision}
           onNearbyEntity={handleEntityDetection}
           onInteract={triggerInteraction}
-          activeUI={activeArtifact || activeDialogue || activeLoot}
+          activeUI={activeArtifact || activeDialogue || activeLoot || activeCooking}
         />
 
         {/* DEPTH OVERLAYS
@@ -379,6 +430,15 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           gameState={gameState}
           setGameState={setGameState}
           onClose={() => setActiveLoot(null)}
+        />
+      )}
+
+      {activeCooking && (
+        <CookingUI
+          entity={activeCooking}
+          gameState={gameState}
+          setGameState={setGameState}
+          onClose={() => setActiveCooking(null)}
         />
       )}
 

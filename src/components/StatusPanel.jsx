@@ -18,10 +18,19 @@ const FONT_SER   = 'Georgia, serif';
 
 const RIGHT_TABS = ['MORPHS', 'SOCIAL'];
 
-// ── NPC display names ──────────────────────────────────────────────────────────
+// ── NPC display names — covers both worldManifest ids and registry ids ─────────
 const NPC_NAMES = {
-  silas_pemberton: 'Silas Pemberton',
+  silas:           'Old Silas',
+  silas_pemberton: 'Old Silas',
+  overseer:        'The Overseer',
   the_overseer:    'The Overseer',
+};
+
+const PORTRAIT_MAP = {
+  silas:           '/ui/portraits/silas_portrait.png',
+  silas_pemberton: '/ui/portraits/silas_portrait.png',
+  overseer:        '/ui/portraits/overseer_portrait.png',
+  the_overseer:    '/ui/portraits/overseer_portrait.png',
 };
 
 // ── Mood ───────────────────────────────────────────────────────────────────────
@@ -511,10 +520,17 @@ const SocialPane = ({ gameState }) => {
               const color = val >= 80 ? '#c0392b' : val >= 50 ? '#b08030' : val >= 20 ? '#7a6a3a' : '#4a8a6a';
               return (
                 <div key={id} style={{ padding: '8px 0', borderBottom: `1px solid ${BORDER}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px', color: TEXT, textTransform: 'uppercase' }}>
-                      {NPC_NAMES[id] || id}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {PORTRAIT_MAP[id] && (
+                        <div style={{ width: 36, height: 36, flexShrink: 0, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+                          <img src={PORTRAIT_MAP[id]} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} alt="" />
+                        </div>
+                      )}
+                      <span style={{ fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px', color: TEXT, textTransform: 'uppercase' }}>
+                        {NPC_NAMES[id] || id}
+                      </span>
+                    </div>
                     <span style={{ fontFamily: FONT, fontSize: 8, color, letterSpacing: '1px' }}>{Math.round(val)}%</span>
                   </div>
                   <div style={{ height: 2, background: BORDER_MED }}>
@@ -541,8 +557,15 @@ const SocialPane = ({ gameState }) => {
               const filled = Math.round((score / 100) * 5);
               return (
                 <div key={id} style={{ padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px', color: TEXT, textTransform: 'uppercase' }}>{name}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {PORTRAIT_MAP[id] && (
+                        <div style={{ width: 36, height: 36, flexShrink: 0, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+                          <img src={PORTRAIT_MAP[id]} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} alt="" />
+                        </div>
+                      )}
+                      <span style={{ fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px', color: TEXT, textTransform: 'uppercase' }}>{name}</span>
+                    </div>
                     <span style={{ fontFamily: FONT, fontSize: 8, letterSpacing: '2px', color: tier.color, textTransform: 'uppercase' }}>{tier.label}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 3, marginBottom: note ? 5 : 0 }}>

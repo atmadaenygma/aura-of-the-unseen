@@ -31,7 +31,7 @@ export const DIALOGUE_DATA = {
     options: [
       // ── Normal options — hidden after betrayal ──────────────────────────────
       { text: "Tell me about the history of this house.",             next: "branch_history",  requireNoFlag: "silas_betrayed" },
-      { text: "Who is the man standing in the yard? (The Overseer)", next: "branch_overseer", requireNoFlag: "silas_betrayed" },
+      { text: "Who is the man standing in the yard? (The Overseer)", next: "branch_overseer", requireNoFlag: "silas_betrayed", knowledgeGain: { the_overseer: 2 } },
       {
         text: "[Genetic Memory] (Peer into the wood grain) 'I can feel the history of the hands that built this porch.'",
         facet: "genetic_memory",
@@ -149,6 +149,7 @@ export const DIALOGUE_DATA = {
         text: "'What does it say?'",
         next: "silas_note_truth",
         takeItem: "folded_note",
+        knowledgeGain: { silas_pemberton: 2 },
       },
       {
         text: "'It's yours, Silas. Think nothing of it.'",
@@ -156,6 +157,7 @@ export const DIALOGUE_DATA = {
         takeItem: "folded_note",
         flagTrigger: "silas_note_delivered",
         impact: 5,
+        knowledgeGain: { silas_pemberton: 2 },
       },
     ]
   },
@@ -172,6 +174,7 @@ export const DIALOGUE_DATA = {
         next: "silas_hub",
         flagTrigger: "silas_note_delivered",
         impact: 5,
+        knowledgeGain: { silas_pemberton: 3 },
       },
     ]
   },
@@ -230,6 +233,7 @@ export const DIALOGUE_DATA = {
         takeItem: "folded_note",
         flagTrigger: "silas_betrayed",
         impact: -20,
+        knowledgeGain: { the_overseer: 3, silas_pemberton: 2 },
       },
     ]
   },
@@ -306,7 +310,7 @@ export const DIALOGUE_DATA = {
     text: "Don't lie to me, girl. I can see it on your face. You think I don't know thieving hands when I see them? You'll be answering for this in irons.",
     introspection: "He calls for the others. There is no talking your way out of this.",
     options: [
-      { text: "[You are taken.]", next: null, clearStolen: true, impact: -30, flagTrigger: "detained_by_overseer" },
+      { text: "[You are taken.]", next: null, clearStolen: true, impact: -30, flagTrigger: "detained_by_overseer", knowledgeGain: { the_overseer: 4 } },
     ]
   },
 };

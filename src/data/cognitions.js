@@ -196,16 +196,20 @@ export const PEOPLE_REGISTRY = {
   silas_pemberton: {
     id: 'silas_pemberton',
     name: 'SILAS PEMBERTON',
-    image: null,
+    image: '/ui/portraits/silas_portrait.png',
+    video: '/discovery/characters/silas_360.webm',
     tiers: [
       {
         level: 0,
+        source: 'observation',
         content:
           "A man employed in the household. He seems nervous — watchful in the way " +
           "of someone used to being observed. He avoids certain rooms.",
       },
       {
         level: 1,
+        source: 'silas',
+        lockedHint: "Speak with Silas.",
         content:
           "Silas has worked here for three years. He came from further south. " +
           "He does not speak about what came before, but the way he moves " +
@@ -213,13 +217,32 @@ export const PEOPLE_REGISTRY = {
           "about what it cost him to survive to this point.",
       },
       {
-        level: 3,
+        level: 2,
+        source: 'evidence',
+        lockedHint: "Find and read what he has been hiding.",
         content:
-          "Silas carries a note he has never delivered. Whatever it says, " +
-          "it matters to him enough to hide it. He trusts very few people, " +
-          "for reasons that have nothing to do with character and everything " +
-          "to do with history. He has learned that trust has a price, " +
-          "and he has paid it before.",
+          "S. Pemberton — Chicago train. Winter '71, platform, 4 a.m.\n\n" +
+          "The last entry is circled twice. Below it, in a different hand:\n" +
+          "Train did not come.",
+      },
+      {
+        level: 3,
+        source: 'silas',
+        lockedHint: "Return the note to Silas and hear what he says.",
+        content:
+          "\"It says I was supposed to leave on a train. Winter of '71. " +
+          "Train never came. I stayed. Made a life from what was left. " +
+          "That is all any of us can do.\"",
+      },
+      {
+        level: 4,
+        source: 'overseer',
+        lockedHint: "Hear the other account of that night.",
+        content:
+          "\"Old Silas and his little train. We caught him at the station " +
+          "in the winter of '71 — pulled him off the platform in front of his wife. " +
+          "Dragged him back through the snow. He cried the whole way. " +
+          "Got exactly what was coming to him.\"",
       },
     ],
   },
@@ -228,15 +251,19 @@ export const PEOPLE_REGISTRY = {
     id: 'the_overseer',
     name: 'THE OVERSEER',
     image: '/ui/portraits/overseer_portrait.png',
+    video: '/discovery/characters/01_overseer_360.webm',
     tiers: [
       {
         level: 0,
+        source: 'observation',
         content:
           "He moves through the house with the ease of someone who has never " +
           "had to justify his presence. He notices things. He remembers them.",
       },
       {
         level: 1,
+        source: 'observation',
+        lockedHint: "Encounter the Overseer directly.",
         content:
           "His authority here is real and enforced. He keeps records. " +
           "He tracks who goes where, who speaks to whom. " +
@@ -244,7 +271,28 @@ export const PEOPLE_REGISTRY = {
           "instinct — he is not looking for something specific. He is simply always looking.",
       },
       {
+        level: 2,
+        source: 'silas',
+        lockedHint: "Ask Silas about him.",
+        content:
+          "\"That's Miller. He's got a nose for 'anomalies'. " +
+          "If he sees you moving too fast, or if your skin starts to flicker... " +
+          "he don't ask questions. He just uses the whip.\"",
+      },
+      {
         level: 3,
+        source: 'overseer',
+        lockedHint: "Witness what he does with power.",
+        content:
+          "\"Ha. Old Silas and his little train. We caught him at the station " +
+          "in the winter of '71 — pulled him off the platform in front of his wife. " +
+          "Dragged him back through the snow. He cried the whole way. " +
+          "Got exactly what was coming to him.\"",
+      },
+      {
+        level: 4,
+        source: 'observation',
+        lockedHint: "See how far he will go.",
         content:
           "Men like him were not born cruel. They were given a role that required cruelty " +
           "and discovered they could perform it. The system needed someone between " +
@@ -255,6 +303,14 @@ export const PEOPLE_REGISTRY = {
     ],
   },
 
+};
+
+// ── NPC → REGISTRY bridge ─────────────────────────────────────────────────────
+// Maps worldManifest NPC ids → PEOPLE_REGISTRY keys.
+// Import this wherever game entities need to update discovery knowledge.
+export const NPC_TO_REGISTRY = {
+  silas:    'silas_pemberton',
+  overseer: 'the_overseer',
 };
 
 // ── PLACES ────────────────────────────────────────────────────────────────────

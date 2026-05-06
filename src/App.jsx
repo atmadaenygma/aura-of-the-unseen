@@ -85,6 +85,7 @@ const INITIAL_STATE = {
   integrity: 50,
   hunger: 100,
   knownRecipes: [],
+  activeProjection: 'hidden',
   equippedAbility: null,
   abilityLevels: { genetic_memory: 1, nerve_sense: 1, social_crypsis: 1, mimicry: 1 },
   abilityXP:     { genetic_memory: 0, nerve_sense: 0, social_crypsis: 0, mimicry: 0 },

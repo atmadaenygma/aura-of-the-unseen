@@ -47,7 +47,21 @@ export const ITEM_DEFS = {
   // ── Small / 1×1 (explicit, no stacking) ──────────────────────────────────────
   broken_button: { size: { w: 1, h: 1 }, stackMax: 1 },
   wax_paper:     { size: { w: 1, h: 1 }, stackMax: 1 },
-  folded_note:   { size: { w: 1, h: 1 }, stackMax: 1, questItem: true },
+  folded_note: {
+    size: { w: 1, h: 1 }, stackMax: 1, questItem: true,
+    readable: true,
+    knowledgeGain: { silas_pemberton: 2 },
+    readContent: [
+      "Hattie Groves — north, Jan. '70",
+      "James Tolliver — north, Feb. '70",
+      "Sol. Bright — Chicago, Mar. '70",
+      "",
+      "S. Pemberton — Chicago train",
+      "Winter '71, platform, 4 a.m.",
+      "",
+      "Train did not come.",
+    ],
+  },
   dried_flower:  { size: { w: 1, h: 1 }, stackMax: 1 },
   copper_coin:   { size: { w: 1, h: 1 }, stackMax: 1 },
   nail:          { size: { w: 1, h: 1 }, stackMax: 1 },

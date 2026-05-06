@@ -7,6 +7,7 @@ import { DebugOverlay } from './DebugOverlay';
 import { DialogueSystem } from './DialogueSystem';
 import { LootUI } from './LootUI';
 import { CookingUI } from './CookingUI';
+import { NPC_TO_REGISTRY } from '../data/cognitions';
 
 /**
  * AURA OF THE UNSEEN: MASTER STAGE ENGINE v4.5
@@ -326,6 +327,16 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
         // ── NORMAL NPC INTERACTION ───────────────────────────────────────────
         // Safety guard: never open dialogue while give mode is active.
         if (gameStateRef.current.pendingGive) return;
+
+        // First-meet discovery: set knowledge level 1 the first time Maya speaks to this NPC
+        const registryId = NPC_TO_REGISTRY[entity.id];
+        if (registryId) {
+          setGameState(p => {
+            if ((p.knowledge?.[registryId] ?? 0) > 0) return p;
+            return { ...p, knowledge: { ...(p.knowledge || {}), [registryId]: 1 } };
+          });
+        }
+
         if (entity.dialogueKey) {
           setActiveDialogue(entity.dialogueKey);
         } else if (entity.barks) {

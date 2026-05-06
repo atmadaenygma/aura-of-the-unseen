@@ -7,6 +7,22 @@ import { useTextScale } from '../context/TextScaleContext';
 // Returns null (not a broken fallback) if no portrait exists —
 // the portrait slot simply renders nothing, which is correct for
 // future NPCs without a portrait asset yet.
+// ── Palette (matches rest of UI — do not change) ──────────────────────────────
+const BG        = '#d6cab0';
+const BG_DARK   = '#c9bca0';
+const BG_INSET  = 'rgba(58,32,16,0.06)';
+const ACCENT    = '#cb7866';
+const TEXT      = '#3a2010';
+const TEXT_DIM  = 'rgba(58,32,16,0.4)';
+const TEXT_MID  = 'rgba(58,32,16,0.65)';
+const BORDER    = 'rgba(58,32,16,0.18)';
+const BORDER_MED= 'rgba(58,32,16,0.3)';
+const FONT      = 'Courier New, monospace';
+const FONT_SER  = 'Georgia, serif';
+// Introspection / facet tint — deliberately distinct to signal neurological perception
+const FACET_BG  = 'rgba(42,90,80,0.07)';
+const FACET_COL = '#3a7a6a';
+
 const resolvePortrait = (speaker) => {
   if (!speaker) return null;
   const slug = speaker
@@ -155,6 +171,13 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
     if (choice.flagTrigger) updates.flags          = { ...updates.flags, [choice.flagTrigger]: true };
     if (choice.impact)      updates.morphStability = Math.max(0, updates.morphStability + choice.impact);
     if (choice.rewardMoney) updates.money         += choice.rewardMoney;
+    if (choice.knowledgeGain) {
+      const k = { ...(updates.knowledge || {}) };
+      Object.entries(choice.knowledgeGain).forEach(([id, level]) => {
+        k[id] = Math.max(k[id] ?? 0, level);
+      });
+      updates.knowledge = k;
+    }
     // takeItem — remove a specific item id from inventory when the choice is made
     if (choice.takeItem) {
       const inv = Array.from({ length: 20 }, (_, i) => (updates.inventory || [])[i] ?? null);
@@ -201,7 +224,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column',
+      background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column',
       backdropFilter: 'blur(7px)', overflow: 'hidden',
     }}>
 
@@ -211,30 +234,47 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
         className="ledger-scroll-container"
         style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          width: '450px', height: '650px', background: '#fff', border: '8px double #000',
-          padding: '40px', display: 'flex', flexDirection: 'column',
-          boxShadow: '0 30px 100px rgba(0,0,0,0.8)', zIndex: 10,
+          width: '450px', height: '650px',
+          background: BG,
+          borderTop: `2px solid ${ACCENT}`,
+          border: `1px solid ${BORDER_MED}`,
+          padding: '32px 36px',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0 30px 100px rgba(0,0,0,0.7)', zIndex: 10,
           overflowY: 'auto', scrollBehavior: 'smooth',
           zoom,
         }}
       >
         {/* HISTORY — faded record of previous exchanges */}
         {history.map((record, idx) => (
-          <div key={`hist-${idx}`} style={{ marginBottom: '40px', opacity: 0.5, borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
+          <div key={`hist-${idx}`} style={{
+            marginBottom: 32, opacity: 0.7,
+            borderBottom: `1px solid ${BORDER}`, paddingBottom: 18,
+          }}>
             {record.facet && (
               <img
                 src={`/ui/concious_thoughts/${record.facet}.png`}
-                style={{ width: '100%', height: 'auto', opacity: 0.4, marginBottom: '10px' }}
+                style={{ width: '100%', height: 'auto', opacity: 0.35, marginBottom: 8 }}
                 alt=""
               />
             )}
-            <div style={{ textAlign: record.side === 'left' ? 'left' : 'right', color: '#888', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+            <div style={{
+              textAlign: record.side === 'left' ? 'left' : 'right',
+              color: TEXT_MID, fontFamily: FONT, fontSize: 12,
+              letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 4,
+            }}>
               {record.speaker}
             </div>
-            <div style={{ textAlign: record.side === 'left' ? 'left' : 'right', color: '#444', fontSize: '16px', fontFamily: 'serif', fontStyle: 'italic' }}>
+            <div style={{
+              textAlign: record.side === 'left' ? 'left' : 'right',
+              color: TEXT, fontFamily: FONT_SER, fontSize: 17, fontStyle: 'italic', lineHeight: 1.45,
+            }}>
               "{record.text}"
             </div>
-            <div style={{ textAlign: 'left', color: '#000', fontSize: '13px', marginTop: '10px', fontWeight: 'bold' }}>
+            <div style={{
+              textAlign: 'left', color: TEXT, fontFamily: FONT,
+              fontSize: 13, marginTop: 8, letterSpacing: '0.5px',
+            }}>
               Maya: "{record.chosenOption}"
             </div>
           </div>
@@ -245,8 +285,10 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
             {/* SPEAKER HEADER */}
             <div style={{
               textAlign: currentNode.side === 'left' ? 'left' : 'right',
-              color: '#000', fontSize: '13px', fontWeight: '900', letterSpacing: '5px',
-              marginBottom: '20px', borderBottom: '3px solid #000', paddingBottom: '10px',
+              color: TEXT, fontFamily: FONT, fontSize: 13,
+              fontWeight: '900', letterSpacing: '4px',
+              marginBottom: 18,
+              borderBottom: `2px solid ${ACCENT}`, paddingBottom: 10,
             }}>
               {currentNode.speaker.toUpperCase()}
             </div>
@@ -254,8 +296,8 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
             {/* DIALOGUE TEXT */}
             <div style={{
               textAlign: currentNode.side === 'left' ? 'left' : 'right',
-              color: '#000', fontSize: '21px', fontFamily: 'serif',
-              lineHeight: '1.4', marginBottom: '30px', fontWeight: '600',
+              color: TEXT, fontFamily: FONT_SER, fontSize: 20,
+              lineHeight: 1.45, marginBottom: 28, fontWeight: '600',
             }}>
               "{currentNode.text}"
             </div>
@@ -263,15 +305,16 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
             {/* NEUROLOGICAL FACET BANNER */}
             {currentNode.introspection && (
               <div style={{
-                position: 'relative', background: '#f0fafa',
-                padding: '0px 0px 25px 0px', border: '1px solid #00808033',
-                marginBottom: '40px', overflow: 'hidden',
+                position: 'relative', background: FACET_BG,
+                padding: '0 0 22px 0',
+                border: `1px solid ${FACET_COL}33`,
+                marginBottom: 32, overflow: 'hidden',
               }}>
                 {currentNode.facet && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <img
                       src={`/ui/concious_thoughts/${currentNode.facet}.png`}
-                      style={{ width: '100%', height: 'auto', display: 'block', marginBottom: '15px' }}
+                      style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 12 }}
                       alt="Neurological Facet"
                       onError={(e) => {
                         console.error(`MISSING ASSET: /ui/concious_thoughts/${currentNode.facet}.png`);
@@ -279,17 +322,19 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
                       }}
                     />
                     <span style={{
-                      color: '#008080', fontSize: '12px', fontWeight: '900', letterSpacing: '4px',
-                      textTransform: 'uppercase', marginBottom: '15px',
-                      borderBottom: '1px solid #00808033', paddingBottom: '5px',
+                      color: FACET_COL, fontFamily: FONT, fontSize: 12,
+                      fontWeight: '900', letterSpacing: '3px',
+                      textTransform: 'uppercase', marginBottom: 12,
+                      borderBottom: `1px solid ${FACET_COL}33`, paddingBottom: 5,
                     }}>
                       {currentNode.facet.replace(/_/g, ' ')}
                     </span>
                   </div>
                 )}
                 <div style={{
-                  color: '#008080', fontSize: '15px', fontStyle: 'italic',
-                  lineHeight: '1.7', opacity: 0.9, textAlign: 'center', padding: '0 25px',
+                  color: FACET_COL, fontFamily: FONT_SER, fontSize: 15,
+                  fontStyle: 'italic', lineHeight: 1.7,
+                  textAlign: 'center', padding: '0 22px',
                 }}>
                   {currentNode.introspection}
                 </div>
@@ -297,7 +342,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
             )}
 
             {/* DIALOGUE OPTIONS — keyboard/controller: arrows navigate, Enter/A confirms */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 18 }}>
               {getVisibleOptions().map((opt, i) => {
                 const highlighted = i === selectedOption;
                 return (
@@ -306,21 +351,29 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
                     onClick={() => processChoice(opt)}
                     onMouseEnter={() => setSelectedOption(i)}
                     style={{
-                      background: highlighted ? '#000' : 'none',
-                      border: '1px solid #000', color: highlighted ? '#fff' : '#000',
-                      padding: '12px', textAlign: 'left', cursor: 'pointer',
-                      fontFamily: 'serif', fontSize: '15px', fontWeight: '900',
-                      transition: 'background 0.1s',
+                      background: highlighted ? ACCENT : 'transparent',
+                      border: `1px solid ${highlighted ? ACCENT : BORDER_MED}`,
+                      color: highlighted ? '#fff' : TEXT,
+                      padding: '11px 14px', textAlign: 'left', cursor: 'pointer',
+                      fontFamily: FONT_SER, fontSize: 16, fontWeight: '600',
+                      letterSpacing: '0.3px', lineHeight: 1.3,
+                      transition: 'background 0.12s, border-color 0.12s, color 0.12s',
                     }}
                   >
-                    {i + 1}. {opt.text}
+                    <span style={{ color: highlighted ? 'rgba(255,255,255,0.7)' : TEXT_MID, marginRight: 8, fontFamily: FONT, fontSize: 12 }}>
+                      {i + 1}.
+                    </span>
+                    {opt.text}
                   </button>
                 );
               })}
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', borderTop: '2px solid black', marginTop: '20px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: '300px', borderTop: `1px solid ${BORDER_MED}`, marginTop: 20,
+          }}>
             <DiceCheck
               skill={activeCheck.check.skill}
               difficulty={activeCheck.check.difficulty}
@@ -364,10 +417,10 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
       </div>
 
       <style>{`
-        .ledger-scroll-container::-webkit-scrollbar       { width: 6px; }
-        .ledger-scroll-container::-webkit-scrollbar-track { background: #f1f1f1; }
-        .ledger-scroll-container::-webkit-scrollbar-thumb { background: #000; }
-        .ledger-scroll-container::-webkit-scrollbar-thumb:hover { background: #333; }
+        .ledger-scroll-container::-webkit-scrollbar       { width: 4px; }
+        .ledger-scroll-container::-webkit-scrollbar-track { background: rgba(58,32,16,0.06); }
+        .ledger-scroll-container::-webkit-scrollbar-thumb { background: #cb7866; }
+        .ledger-scroll-container::-webkit-scrollbar-thumb:hover { background: #b86855; }
       `}</style>
     </div>
   );

@@ -166,6 +166,14 @@ const EchoesTab = ({ gameState }) => {
 
 // ── COGNITIONS ────────────────────────────────────────────────────────────────
 
+// Source attribution colours — explicitly requested by the user
+const SOURCE_META = {
+  observation: { label: 'OBSERVED',         color: 'rgba(58,32,16,0.5)'  },
+  evidence:    { label: 'FROM THE EVIDENCE', color: '#2a7a5a'             },
+  silas:       { label: 'SILAS PEMBERTON',   color: '#b8952a'             },
+  overseer:    { label: 'THE OVERSEER',      color: '#8b2e1a'             },
+};
+
 const COG_TABS = ['ABILITIES', 'REVELATIONS', 'PEOPLE', 'PLACES', 'THINGS'];
 
 // Sidebar button shared across all sub-tabs
@@ -188,29 +196,53 @@ const CogSidebarBtn = ({ label, active, onClick }) => (
 
 // Knowledge tier renderer — shows unlocked tiers, dims locked ones
 const KnowledgeTiers = ({ tiers, level }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
     {tiers.map((tier, i) => {
-      const unlocked = level >= tier.level;
+      const unlocked   = level >= tier.level;
+      const revNum     = String(i + 1).padStart(2, '0');
+      const srcMeta    = SOURCE_META[tier.source] ?? SOURCE_META.observation;
+      const borderColor = unlocked ? srcMeta.color : BORDER;
       return (
-        <div key={i} style={{ position: 'relative' }}>
-          {tier.level > 0 && (
-            <div style={{
+        <div key={i} style={{
+          borderLeft: `3px solid ${borderColor}`,
+          paddingLeft: 14,
+        }}>
+          {/* Source label + revelation number */}
+          <div style={{ marginBottom: unlocked ? 4 : 6 }}>
+            <span style={{
               fontFamily: FONT, fontSize: 7, letterSpacing: '2px',
-              color: unlocked ? ACCENT : TEXT_DIM,
-              textTransform: 'uppercase', marginBottom: 5,
+              color: unlocked ? srcMeta.color : TEXT_DIM,
+              textTransform: 'uppercase',
             }}>
-              {unlocked ? `— LEVEL ${tier.level} KNOWLEDGE UNLOCKED` : `— LEVEL ${tier.level} REQUIRED`}
+              {unlocked ? srcMeta.label : `${srcMeta.label} — REVELATION ${revNum}`}
+            </span>
+            {unlocked && (
+              <span style={{
+                fontFamily: FONT, fontSize: 7, letterSpacing: '2px',
+                color: srcMeta.color, opacity: 0.6,
+                textTransform: 'uppercase', marginLeft: 8,
+              }}>
+                — REVELATION {revNum}
+              </span>
+            )}
+          </div>
+          {/* Content or locked hint */}
+          {unlocked ? (
+            <div style={{
+              fontFamily: FONT_SER, fontSize: 14, color: TEXT,
+              lineHeight: 1.8, fontStyle: 'italic',
+              whiteSpace: 'pre-line',
+            }}>
+              {tier.content}
+            </div>
+          ) : (
+            <div style={{
+              fontFamily: FONT_SER, fontSize: 12, fontStyle: 'italic',
+              color: TEXT_DIM, lineHeight: 1.5,
+            }}>
+              {tier.lockedHint || '— discover more to unlock'}
             </div>
           )}
-          <div style={{
-            fontFamily: FONT_SER, fontSize: 14, color: unlocked ? TEXT : TEXT_DIM,
-            lineHeight: 1.8, fontStyle: 'italic',
-            filter: unlocked ? 'none' : 'blur(3px)',
-            userSelect: unlocked ? 'auto' : 'none',
-            transition: 'filter 0.3s, color 0.3s',
-          }}>
-            {tier.content}
-          </div>
         </div>
       );
     })}
@@ -289,7 +321,104 @@ const AbilitiesPane = ({ gameState }) => {
   );
 };
 
-// ── Generic knowledge pane (Revelations / People / Places / Things) ────────────
+// ── PEOPLE pane — 3-column: selection | media | discovered text ────────────────
+const PeoplePane = ({ gameState }) => {
+  const knowledge = gameState.knowledge || {};
+  const visible   = Object.values(PEOPLE_REGISTRY).filter(e =>
+    (knowledge[e.id] || 0) > 0 || (e.unlockFlag && gameState.flags?.[e.unlockFlag])
+  );
+
+  const [selected,    setSelected]    = useState(visible[0]?.id || null);
+  const [videoErrors, setVideoErrors] = useState({});
+  const active = selected ? PEOPLE_REGISTRY[selected] : null;
+  const level  = active ? (knowledge[active.id] || 0) : 0;
+
+  const MEDIA_W = 210;
+  const MEDIA_H = 280; // 3:4
+
+  if (visible.length === 0) {
+    return (
+      <div style={{ color: TEXT_DIM, fontFamily: FONT_SER, fontStyle: 'italic', fontSize: 14, paddingTop: 12 }}>
+        No one has made an impression yet. Speak with those you encounter.
+      </div>
+    );
+  }
+
+  const showVideo = active?.video && !videoErrors[active.id];
+
+  return (
+    <div style={{ display: 'flex', gap: 16, minHeight: 0 }}>
+
+      {/* Col 1 — selection list */}
+      <div style={{ width: 150, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {visible.map(e => (
+          <CogSidebarBtn key={e.id} label={e.name} active={selected === e.id} onClick={() => setSelected(e.id)} />
+        ))}
+      </div>
+
+      {/* Col 2 — portrait / 360 video */}
+      {active && (
+        <div style={{ width: MEDIA_W, height: MEDIA_H, flexShrink: 0 }}>
+          <div style={{
+            width: MEDIA_W, height: MEDIA_H,
+            overflow: 'hidden', position: 'relative',
+          }}>
+            {showVideo ? (
+              <video
+                key={active.id}
+                src={active.video}
+                autoPlay loop muted playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={() => setVideoErrors(p => ({ ...p, [active.id]: true }))}
+              />
+            ) : active.image ? (
+              <img
+                src={active.image}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+                alt={active.name}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+              />
+            ) : (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                height: '100%', color: TEXT_DIM, fontFamily: FONT, fontSize: 7, letterSpacing: '2px',
+              }}>
+                NO IMAGE
+              </div>
+            )}
+            {/* Format warning overlay — shown when video fails but image is available */}
+            {active.video && videoErrors[active.id] && active.image && (
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                background: 'rgba(58,32,16,0.7)', padding: '4px 6px',
+                fontFamily: FONT, fontSize: 6, letterSpacing: '1px', color: 'rgba(255,255,255,0.7)',
+                textTransform: 'uppercase', textAlign: 'center',
+              }}>
+                video unsupported — convert to .mp4
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Col 3 — discovered information */}
+      {active && (
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, letterSpacing: '3px', color: ACCENT, textTransform: 'uppercase', marginBottom: 6 }}>
+            {active.name}
+          </div>
+          <div style={{ fontFamily: FONT, fontSize: 7, letterSpacing: '2px', color: TEXT_DIM, marginBottom: 16 }}>
+            {active.tiers.filter(t => level >= t.level).length} of {active.tiers.length} REVELATIONS DISCOVERED
+          </div>
+          <KnowledgeTiers tiers={active.tiers} level={level} />
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+// ── Generic knowledge pane (Revelations / Places / Things) ────────────────────
 const KnowledgePane = ({ registry, gameState, emptyText }) => {
   const knowledge = gameState.knowledge || {};
 
@@ -371,13 +500,7 @@ const CognitionsTab = ({ gameState }) => {
           emptyText="Nothing has been revealed yet. Look closer at the world around you."
         />
       )}
-      {subTab === 'PEOPLE' && (
-        <KnowledgePane
-          registry={PEOPLE_REGISTRY}
-          gameState={gameState}
-          emptyText="No one has made an impression yet. Speak with those you encounter."
-        />
-      )}
+      {subTab === 'PEOPLE' && <PeoplePane gameState={gameState} />}
       {subTab === 'PLACES' && (
         <KnowledgePane
           registry={PLACES_REGISTRY}

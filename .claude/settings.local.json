@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python3 -c ' *)",
       "Bash(python -c ' *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "PowerShell(Get-ChildItem -Path \"k:\\\\00_MyUniverse\\\\AuraOfTheUnseen\\\\aura-of-the-unseen\\\\public\\\\sprites\\\\\" -Recurse | ForEach-Object { if \\($_.PSIsContainer\\) { \"DIR: $\\($_.FullName\\)\" } else { \"FILE: $\\($_.FullName\\)\" } })"
     ]
   }
 }

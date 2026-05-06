@@ -47,10 +47,11 @@ const ORIGIN_META = {
   purchased: { label: 'PURCHASED', color: PURCHASED_GRN },
 };
 
-const ActionPopover = ({ item, isQuest, onDrop, onEat, onLearn, onInspect, onGive, onEnter, onLeave }) => {
+const ActionPopover = ({ item, isQuest, onDrop, onEat, onLearn, onRead, onInspect, onGive, onEnter, onLeave }) => {
   const def          = getItemDef(item.id);
   const isFood       = !!(def.hungerRestore);
   const isRecipeCard = def.category === 'recipe_card';
+  const isReadable   = !!(def.readable);
   const originMeta   = item.origin ? ORIGIN_META[item.origin] : null;
   return (
   <div
@@ -106,6 +107,7 @@ const ActionPopover = ({ item, isQuest, onDrop, onEat, onLearn, onInspect, onGiv
         { label: 'DROP',    fn: onDrop,    color: '#c0392b', hide: isQuest || isRecipeCard },
         { label: 'EAT',     fn: onEat,     color: '#4a8a6a', hide: !isFood       },
         { label: 'LEARN',   fn: onLearn,   color: '#4a6a9a', hide: !isRecipeCard },
+        { label: 'READ',    fn: onRead,    color: QUEST_GOLD, hide: !isReadable  },
         { label: 'INSPECT', fn: onInspect, color: TEXT_MID  },
         { label: 'GIVE',    fn: onGive,    color: ACCENT    },
       ].filter(btn => !btn.hide).map(({ label, fn, color }) => (
@@ -192,8 +194,61 @@ const InspectModal = ({ item, onClose }) => createPortal(
   document.body
 );
 
+// ── Read modal (readable quest items e.g. folded note) ────────────────────────
+const ReadModal = ({ item, onClose }) => {
+  const def   = getItemDef(item.id);
+  const lines = Array.isArray(def.readContent) ? def.readContent : [def.readContent ?? ''];
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 10100,
+        background: 'rgba(0,0,0,0.88)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: BG,
+          border: `1px solid ${BORDER_MED}`,
+          borderTop: `2px solid ${QUEST_GOLD}`,
+          padding: '36px 40px',
+          maxWidth: 340,
+          boxShadow: '0 0 60px rgba(0,0,0,0.7)',
+        }}
+      >
+        <div style={{
+          fontFamily: FONT, fontSize: 8, letterSpacing: '3px',
+          color: QUEST_GOLD, textTransform: 'uppercase', marginBottom: 20,
+        }}>
+          {item.name.toUpperCase()}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {lines.map((line, i) =>
+            line === '' ? (
+              <div key={i} style={{ height: 10 }} />
+            ) : (
+              <div key={i} style={{
+                fontFamily: FONT_SER, fontSize: 14, fontStyle: 'italic',
+                color: TEXT, lineHeight: 1.7,
+              }}>
+                {line}
+              </div>
+            )
+          )}
+        </div>
+        <div style={{ marginTop: 24, color: TEXT_DIM, fontFamily: FONT, fontSize: 9, letterSpacing: '2px' }}>
+          CLICK TO CLOSE
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ── Filtered tab grid (quest / ingredients / food) ────────────────────────────
-const FilteredGrid = ({ items, onDrop, onEat, onLearn, onInspect, onGive }) => {
+const FilteredGrid = ({ items, onDrop, onEat, onLearn, onRead, onInspect, onGive }) => {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const hoverTimer = useRef(null);
 
@@ -245,6 +300,7 @@ const FilteredGrid = ({ items, onDrop, onEat, onLearn, onInspect, onGive }) => {
             onDrop={item ? () => onDrop(item) : undefined}
             onEat={item ? () => onEat(item) : undefined}
             onLearn={item ? () => onLearn?.(item) : undefined}
+            onRead={item ? () => onRead?.(item) : undefined}
             onInspect={item ? () => onInspect(item) : undefined}
             onGive={item ? () => onGive(item) : undefined}
           />
@@ -365,6 +421,7 @@ const SlotCell = ({
   onDrop,
   onEat,
   onLearn,
+  onRead,
   onInspect,
   onGive,
 }) => {
@@ -499,6 +556,7 @@ const SlotCell = ({
           onDrop={onDrop}
           onEat={onEat}
           onLearn={onLearn}
+          onRead={onRead}
           onInspect={onInspect}
           onGive={onGive}
         />
@@ -516,6 +574,7 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
   const [dropTarget,  setDropTarget]  = useState(null);
   const [hoveredSlot, setHoveredSlot] = useState(null);
   const [inspectItem, setInspectItem] = useState(null);
+  const [readingItem, setReadingItem] = useState(null);
   const [activeTab,   setActiveTab]   = useState('satchel');
   const hoverTimer = useRef(null);
 
@@ -562,6 +621,25 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
   const giveItem = (item) => {
     setGameState(p => ({ ...p, pendingGive: item }));
     onClose();
+  };
+
+  const readItem = (anchorIdx) => {
+    const slot = grid[anchorIdx];
+    if (!slot) return;
+    const def = getItemDef(slot.id);
+    if (!def.readable) return;
+    setHoveredSlot(null);
+    setReadingItem(slot);
+    // Reading the note unlocks knowledge about the people mentioned in it
+    if (def.knowledgeGain) {
+      setGameState(p => {
+        const k = { ...(p.knowledge || {}) };
+        Object.entries(def.knowledgeGain).forEach(([id, level]) => {
+          k[id] = Math.max(k[id] ?? 0, level);
+        });
+        return { ...p, knowledge: k };
+      });
+    }
   };
 
   const learnRecipe = (anchorIdx) => {
@@ -618,8 +696,12 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
     recipe_cards: anchorItems.filter(it => getItemDef(it.id).category === 'recipe_card'),
   };
 
-  const knownRecipes = gameState.knownRecipes || [];
-  const activeCount  = activeTab === 'satchel'      ? itemCount
+  const knownRecipes  = gameState.knownRecipes || [];
+  const satchelCount  = anchorItems.filter(it => {
+    const d = getItemDef(it.id);
+    return !d.questItem && d.category !== 'ingredient' && d.category !== 'recipe' && d.category !== 'recipe_card';
+  }).length;
+  const activeCount   = activeTab === 'satchel'      ? satchelCount
     : activeTab === 'recipe_cards' ? knownRecipes.length
     : (tabItems[activeTab]?.length ?? 0);
 
@@ -686,15 +768,32 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
               {Array.from({ length: INV_TOTAL }, (_, i) => {
                 const slot = grid[i];
                 if (slot !== null && slot.__ref !== undefined) return null;
-                const item = slot;
                 const { row, col } = toRC(i);
+
+                // Items belonging to other tabs are hidden from the satchel view.
+                // They remain in the grid (occupying their positions) but render as empty.
+                const slotDef   = slot ? getItemDef(slot.id) : null;
+                const isTabItem = slot && (
+                  slotDef?.questItem ||
+                  slotDef?.category === 'ingredient' ||
+                  slotDef?.category === 'recipe' ||
+                  slotDef?.category === 'recipe_card'
+                );
+                const item = isTabItem ? null : slot;
+                // Preserve the original span size so excluded multi-cell items
+                // leave a correctly-sized empty space rather than collapsing to 1×1.
+                const { w: ew = 1, h: eh = 1 } = (isTabItem ? slotDef?.size : null) ?? {};
+
                 return (
                   <SlotCell
                     key={i}
                     item={item}
                     faded={drag?.anchorIdx === i}
                     isDropTarget={dropCells.has(i)}
-                    gridStyle={{ gridColumn: `${col + 1}`, gridRow: `${row + 1}` }}
+                    gridStyle={{
+                      gridColumn: `${col + 1}`, gridRow: `${row + 1}`,
+                      ...(isTabItem ? { width: spanPx(ew), height: spanPx(eh) } : {}),
+                    }}
                     showPopover={hoveredSlot === i && !drag}
                     onSlotEnter={() => { if (drag) setDropTarget(i); else showPopoverFor(i); }}
                     onSlotLeave={() => { if (drag) setDropTarget(null); else hidePopover(); }}
@@ -709,6 +808,7 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
                     onDrop={() => dropItem(i)}
                     onEat={() => eatItem(i)}
                     onLearn={() => learnRecipe(i)}
+                    onRead={() => readItem(i)}
                     onInspect={() => { setHoveredSlot(null); setInspectItem(item); }}
                     onGive={() => giveItem(item)}
                   />
@@ -732,6 +832,7 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
             onDrop={(item) => dropItem(item._anchorIdx)}
             onEat={(item) => eatItem(item._anchorIdx)}
             onLearn={(item) => learnRecipe(item._anchorIdx)}
+            onRead={(item) => readItem(item._anchorIdx)}
             onInspect={(item) => setInspectItem(item)}
             onGive={(item) => giveItem(item)}
           />
@@ -776,6 +877,10 @@ export const InventoryUI = ({ gameState, setGameState, onClose }) => {
 
       {inspectItem && (
         <InspectModal item={inspectItem} onClose={() => setInspectItem(null)} />
+      )}
+
+      {readingItem && (
+        <ReadModal item={readingItem} onClose={() => setReadingItem(null)} />
       )}
     </>
   );

@@ -382,6 +382,7 @@ const OPTIONS_TABS = ['VIDEO', 'SOUND', 'LANGUAGE', 'GAMEPLAY'];
 
 const MenuPopup = ({ gameState, setGameState, onLoad, onReset, onClose, onDebug }) => {
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmQuit,  setConfirmQuit]  = useState(false);
   const [optionsView,  setOptionsView]  = useState(null); // null = main list, 'controls', or options tab name
   const hasSave = !!loadGame();
   const zoom = useTextScale();
@@ -509,7 +510,16 @@ const MenuPopup = ({ gameState, setGameState, onLoad, onReset, onClose, onDebug 
             </div>
           )}
 
-          <PopupItem label="QUIT" onClick={() => window.location.reload()} />
+          {/* QUIT — two-option submenu */}
+          {!confirmQuit ? (
+            <PopupItem label="QUIT" onClick={() => setConfirmQuit(true)} danger />
+          ) : (
+            <div style={{ borderTop: `1px solid rgba(58,32,16,0.12)` }}>
+              <PopupItem label="QUIT TO MAIN MENU" onClick={() => window.location.reload()} danger />
+              <PopupItem label="QUIT TO DESKTOP"   onClick={() => window.close()} danger />
+              <PopupItem label="CANCEL"             onClick={() => setConfirmQuit(false)} />
+            </div>
+          )}
         </>
       )}
     </div>

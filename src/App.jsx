@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Stage } from './components/Stage';
 import { HUD } from './components/HUD';
-import { loadGame, saveGame, clearSave } from './utils/persistence';
+import { MainMenu } from './components/MainMenu';
+import { LoadingScreen } from './components/LoadingScreen';
+import { loadGame, saveGame, clearSave, migrateOldSave, getSaveSlots } from './utils/persistence';
+migrateOldSave();
 import { WORLD_MANIFEST } from './data/worldManifest';
 import { TextScaleContext } from './context/TextScaleContext';
 
@@ -106,6 +109,7 @@ const hydrateLoad = (saved) => ({
   hunger:           saved.hunger           ?? 100,
   knownRecipes:     Array.isArray(saved.knownRecipes) ? saved.knownRecipes : [],
   activeAbility:    saved.activeAbility    || 'NONE',
+  activeProjection: saved.activeProjection ?? 'hidden',
   equippedAbility:  saved.equippedAbility  ?? null,
   unlockedMorphs:   Array.isArray(saved.unlockedMorphs) ? saved.unlockedMorphs : [],
   observedNPCs:     saved.observedNPCs     || {},
@@ -119,10 +123,12 @@ const hydrateLoad = (saved) => ({
 
 export default function App() {
   const [gameState, setGameState] = useState(() => {
-    const saved = loadGame();
+    const saved = loadGame(1);
     return saved ? hydrateLoad(saved) : { ...INITIAL_STATE };
   });
 
+  const [showMenu,    setShowMenu]    = useState(true);
+  const [showLoading, setShowLoading] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
 
   // Auto-save ref
@@ -144,8 +150,8 @@ export default function App() {
     };
   }, []);
 
-  // Save on every state change
-  useEffect(() => { saveGame(gameState); }, [gameState]);
+  // Auto-save to slot 1 on every state change
+  useEffect(() => { saveGame(gameState, 1); }, [gameState]);
 
   // Auto-save every 5 minutes
   useEffect(() => {
@@ -157,14 +163,45 @@ export default function App() {
   }, []);
 
   const handleReset = () => {
-    clearSave();
+    clearSave(1);
     setGameState({ ...INITIAL_STATE });
   };
 
-  const handleLoad = () => {
-    const saved = loadGame();
+  const handleLoad = (slot = 1) => {
+    const saved = loadGame(slot);
     if (saved) setGameState(hydrateLoad(saved));
   };
+
+  if (showMenu) {
+    return (
+      <TextScaleContext.Provider value={(gameState.textScale ?? 100) / 100}>
+        <MainMenu
+          saveSlots={getSaveSlots()}
+          onLoadSlot={(slot) => {
+            const saved = loadGame(slot);
+            if (saved) setGameState(hydrateLoad(saved));
+            setShowMenu(false);
+            setShowLoading(true);
+          }}
+          onNewGame={() => {
+            setGameState({ ...INITIAL_STATE });
+            setShowMenu(false);
+            setShowLoading(true);
+          }}
+          gameState={gameState}
+          setGameState={setGameState}
+        />
+      </TextScaleContext.Provider>
+    );
+  }
+
+  if (showLoading) {
+    return (
+      <TextScaleContext.Provider value={(gameState.textScale ?? 100) / 100}>
+        <LoadingScreen onContinue={() => setShowLoading(false)} />
+      </TextScaleContext.Provider>
+    );
+  }
 
   const currentManifest = WORLD_MANIFEST[gameState.currentRoom];
   if (!currentManifest) return (

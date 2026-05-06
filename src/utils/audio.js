@@ -13,22 +13,19 @@
 
 const BASE = '/audio';
 
-let masterVolume = 0.8;
-let musicVolume  = 0.5;
-let sfxVolume    = 0.8;
+let masterVolume = 0.6;
+let musicVolume  = 0.28;
+let sfxVolume    = 0.7;
 
 // ── Music ──────────────────────────────────────────────────────────────────────
 let currentTrack  = null;
 let currentAudio  = null;
 let fadingOut     = null;
 
-const MUSIC_TRACKS = {
+export const MUSIC_TRACKS = {
   // map trackId → filename (relative to /audio/music/)
-  // Add entries here as music files are dropped into public/audio/music/
-  //
-  // Example:
-  //   test_house_ambient : 'test_house_ambient.mp3',
-  //   plantation_tension : 'plantation_tension.mp3',
+  chain_rattle_hollow: 'Chain-Rattle Hollow.mp3',  // main menu theme
+  chain_link_amen:     'Chain-link Amen.mp3',       // in-game / level music
 };
 
 export const music = {

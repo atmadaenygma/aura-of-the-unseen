@@ -90,9 +90,9 @@ const PopupItem = ({ label, onClick, danger = false, muted = false }) => {
 // ── Inline settings components (HUD beige theme) ───────────────────────────────
 const SettingsSection = ({ children }) => (
   <div style={{
-    fontFamily: FONT, fontSize: 8, letterSpacing: '3px',
-    color: 'rgba(58,32,16,0.4)', textTransform: 'uppercase',
-    padding: '12px 16px 5px',
+    fontFamily: FONT, fontSize: 11, letterSpacing: '2px',
+    color: 'rgba(58,32,16,0.5)', textTransform: 'uppercase',
+    padding: '14px 16px 6px',
   }}>
     {children}
   </div>
@@ -101,10 +101,10 @@ const SettingsSection = ({ children }) => (
 const SettingsRow = ({ label, children }) => (
   <div style={{
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '8px 16px',
+    padding: '10px 16px',
     borderTop: `1px solid rgba(58,32,16,0.1)`,
   }}>
-    <span style={{ fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px', color: HUD_TEXT, textTransform: 'uppercase' }}>
+    <span style={{ fontFamily: FONT, fontSize: 12, letterSpacing: '1px', color: HUD_TEXT, textTransform: 'uppercase' }}>
       {label}
     </span>
     {children}
@@ -116,9 +116,9 @@ const SettingsSlider = ({ value, onChange, min = 0, max = 100 }) => (
     <input
       type="range" min={min} max={max} value={value}
       onChange={e => onChange(Number(e.target.value))}
-      style={{ width: 100, accentColor: HUD_HOVER, cursor: 'pointer' }}
+      style={{ width: 130, accentColor: HUD_HOVER, cursor: 'pointer' }}
     />
-    <span style={{ fontFamily: FONT, fontSize: 9, color: 'rgba(58,32,16,0.5)', width: 24, textAlign: 'right' }}>
+    <span style={{ fontFamily: FONT, fontSize: 11, color: 'rgba(58,32,16,0.5)', width: 28, textAlign: 'right' }}>
       {value}%
     </span>
   </div>
@@ -128,14 +128,14 @@ const SettingsToggle = ({ value, onChange }) => (
   <button
     onClick={() => onChange(!value)}
     style={{
-      width: 40, height: 20, border: 'none', cursor: 'pointer',
+      width: 44, height: 22, border: 'none', cursor: 'pointer',
       background: value ? HUD_HOVER : 'rgba(58,32,16,0.15)',
       position: 'relative', transition: 'background 0.2s', flexShrink: 0,
     }}
   >
     <div style={{
-      position: 'absolute', top: 2,
-      left: value ? 22 : 2,
+      position: 'absolute', top: 3,
+      left: value ? 24 : 3,
       width: 16, height: 16,
       background: value ? '#fff' : 'rgba(58,32,16,0.4)',
       transition: 'left 0.2s',
@@ -150,8 +150,8 @@ const SettingsSelect = ({ value, onChange, options }) => (
     style={{
       background: 'rgba(58,32,16,0.08)', color: HUD_TEXT,
       border: `1px solid rgba(58,32,16,0.25)`,
-      fontFamily: FONT, fontSize: 9, letterSpacing: '1px',
-      padding: '4px 8px', cursor: 'pointer', outline: 'none',
+      fontFamily: FONT, fontSize: 11, letterSpacing: '1px',
+      padding: '5px 10px', cursor: 'pointer', outline: 'none',
       textTransform: 'uppercase',
     }}
   >
@@ -241,12 +241,17 @@ const GameplayContent = ({ gameState, setGameState }) => {
     <SettingsRow label="Hints"><SettingsToggle value={hints} onChange={setHints} /></SettingsRow>
     <SettingsSection>Interface</SettingsSection>
     <SettingsRow label="Text Size">
-      <SettingsSlider
-        value={textScale}
-        min={80}
-        max={140}
-        onChange={v => setGameState(p => ({ ...p, textScale: v }))}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-end' }}>
+        <SettingsSlider
+          value={textScale}
+          min={70}
+          max={160}
+          onChange={v => setGameState(p => ({ ...p, textScale: v }))}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: 130, fontFamily: FONT, fontSize: 9, color: 'rgba(58,32,16,0.4)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+          <span>Small</span><span>Big</span>
+        </div>
+      </div>
     </SettingsRow>
   </>);
 };
@@ -441,7 +446,7 @@ const MenuPopup = ({ gameState, setGameState, onLoad, onReset, onClose, onDebug 
                     ? `2px solid ${HUD_HOVER}`
                     : '2px solid transparent',
                   color: optionsView === tab ? HUD_HOVER : 'rgba(58,32,16,0.4)',
-                  fontFamily: FONT, fontSize: 8, letterSpacing: '1.5px',
+                  fontFamily: FONT, fontSize: 11, letterSpacing: '1px',
                   textTransform: 'uppercase', cursor: 'pointer',
                   transition: 'color 0.15s, border-color 0.15s',
                   marginBottom: -1,
@@ -463,10 +468,10 @@ const MenuPopup = ({ gameState, setGameState, onLoad, onReset, onClose, onDebug 
       ) : (
         // ── MAIN MENU VIEW ────────────────────────────────────────────────────
         <>
-          <PopupItem label="SAVE GAME" onClick={() => { saveGame(gameState); onClose(); }} />
+          <PopupItem label="SAVE GAME" onClick={() => { saveGame(gameState, 1); onClose(); }} />
           <PopupItem
             label="LOAD GAME"
-            onClick={() => { if (hasSave) { onLoad(); onClose(); } }}
+            onClick={() => { if (hasSave) { onLoad(1); onClose(); } }}
             muted={!hasSave}
           />
           <PopupItem label="OPTIONS"   onClick={() => setOptionsView('VIDEO')} />

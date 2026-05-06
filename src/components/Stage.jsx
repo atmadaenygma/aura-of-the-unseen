@@ -8,6 +8,7 @@ import { DialogueSystem } from './DialogueSystem';
 import { LootUI } from './LootUI';
 import { CookingUI } from './CookingUI';
 import { NPC_TO_REGISTRY } from '../data/cognitions';
+import { music as audioMusic } from '../utils/audio';
 
 /**
  * AURA OF THE UNSEEN: MASTER STAGE ENGINE v4.5
@@ -21,6 +22,12 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   const [activeDialogue, setActiveDialogue] = useState(null);
   const [activeLoot,     setActiveLoot]     = useState(null);
   const [activeCooking,  setActiveCooking]  = useState(null);
+
+  // Play level music when the stage mounts, stop on unmount
+  useEffect(() => {
+    audioMusic.play('chain_link_amen');
+    return () => audioMusic.stop();
+  }, []);
   const [activeBark,     setActiveBark]     = useState({ id: null, text: '' });
   const [nearbyEntity,   setNearbyEntity]   = useState(null);
   const [playerCoords,   setPlayerCoords]   = useState({ x: 640, y: 680, dir: 'DOWN' });

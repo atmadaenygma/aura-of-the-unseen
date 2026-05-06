@@ -177,207 +177,285 @@ const ABILITY_REGISTRY = {
   },
 };
 
-const AVAILABLE_ABILITIES = ['social_crypsis', 'mimicry'];
+// ── Social Crypsis projection forms ───────────────────────────────────────────
+// Icon naming convention:
+//   Ability icons  → /ui/concious_thoughts/{ability_id}.png   (existing)
+//   Projection icons → /ui/projections/{form_id}.png          (new — drop files here)
+//     hidden.png · rat.png · wild_animal.png · generic_white.png
+
+const SOCIAL_FORMS = [
+  {
+    id:   'hidden',
+    name: 'Hidden',
+    img:  '/ui/projections/hidden.png',
+    desc: 'Your presence can be felt but not seen. You can pass through spaces, but those sensitive to the unseen may detect a disturbance.',
+  },
+  {
+    id:   'rat',
+    name: 'Rat',
+    img:  '/ui/projections/rat.png',
+    desc: 'Projects the impression of something small, unwanted, and beneath notice. Causes an instinctive disgust response in those nearby.',
+  },
+  {
+    id:   'wild_animal',
+    name: 'Wild Dog',
+    img:  '/ui/projections/wild_dog.png',
+    desc: 'Projects deep instinctual fear. Those who sense it will freeze or flee. Unpredictable — use with care in enclosed spaces.',
+  },
+];
+
+// ── Mimicry base form (always available) ──────────────────────────────────────
+const GENERIC_WHITE_FORM = {
+  id:   'generic_white',
+  name: 'White Citizen',
+  img:  '/ui/projections/generic_white.png',
+  desc: 'Projects the social standing of a white citizen of the era. Grants passage through white spaces and civil conversation. The frequency is unstable — prolonged use draws scrutiny.',
+};
+
+// ── Accordion sub-components ───────────────────────────────────────────────────
+const AccordionHeader = ({ label, img, desc, level, isOpen, isRunning, isActive, onToggle, onActivate, onDeactivate }) => (
+  <div
+    onClick={onToggle}
+    style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '10px 14px', cursor: 'pointer',
+      background: isRunning ? `${ACCENT}20` : isActive ? `${ACCENT}10` : BG_DARK,
+      borderBottom: isOpen ? `1px solid ${BORDER}` : 'none',
+      transition: 'background 0.15s',
+      userSelect: 'none',
+    }}
+  >
+    {/* Left — icon + text */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+      <div style={{
+        width: 40, height: 40, flexShrink: 0,
+        background: BG_INSET, border: `1px solid ${isRunning ? ACCENT : isActive ? `${ACCENT}80` : BORDER_MED}`,
+        overflow: 'hidden',
+      }}>
+        {img && (
+          <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.88 }} alt={label}
+            onError={e => { e.currentTarget.style.display = 'none'; }} />
+        )}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+          <span style={{ fontFamily: FONT, fontSize: 10, letterSpacing: '2.5px', color: isRunning ? ACCENT : isActive ? ACCENT : TEXT, textTransform: 'uppercase' }}>
+            {label}
+          </span>
+          {isRunning && <span style={{ fontFamily: FONT, fontSize: 7, color: ACCENT, letterSpacing: '1px' }}>◆ ACTIVE</span>}
+          <span style={{ fontFamily: FONT, fontSize: 7, color: GOLD, letterSpacing: '1px' }}>LVL {level}</span>
+        </div>
+        {desc && (
+          <div style={{ fontFamily: FONT_SER, fontSize: 11, fontStyle: 'italic', color: TEXT_MID, lineHeight: 1.3 }}>
+            {desc}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Right — action button + arrow */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 10 }}
+      onClick={e => e.stopPropagation()}
+    >
+      {isRunning ? (
+        <button onClick={onDeactivate} style={{
+          background: 'transparent', border: `1px solid ${ACCENT}`, color: ACCENT,
+          fontFamily: FONT, fontSize: 7, letterSpacing: '1px', padding: '4px 8px',
+          cursor: 'pointer', textTransform: 'uppercase', whiteSpace: 'nowrap',
+          transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = `${ACCENT}18`; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          DEACTIVATE
+        </button>
+      ) : (
+        <button onClick={onActivate} style={{
+          background: ACCENT, border: `1px solid ${ACCENT}`, color: '#fff',
+          fontFamily: FONT, fontSize: 7, letterSpacing: '1px', padding: '4px 8px',
+          cursor: 'pointer', textTransform: 'uppercase', whiteSpace: 'nowrap',
+          transition: 'opacity 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = '0.82'; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+        >
+          MAKE ACTIVE
+        </button>
+      )}
+      <span style={{
+        color: TEXT_DIM, fontSize: 9, display: 'inline-block',
+        transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+        transition: 'transform 0.2s',
+      }}>▶</span>
+    </div>
+  </div>
+);
+
+const FormRow = ({ name, img, desc, selected, onClick }) => (
+  <button
+    onClick={onClick}
+    style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      width: '100%', padding: '10px 14px',
+      background: selected ? `${ACCENT}12` : 'transparent',
+      border: 'none',
+      borderLeft: `3px solid ${selected ? ACCENT : 'transparent'}`,
+      borderBottom: `1px solid ${BORDER}`,
+      cursor: 'pointer', textAlign: 'left',
+      transition: 'background 0.12s, border-color 0.12s',
+    }}
+    onMouseEnter={e => { if (!selected) e.currentTarget.style.background = `rgba(58,32,16,0.04)`; }}
+    onMouseLeave={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
+  >
+    {/* Form icon */}
+    <div style={{
+      width: 32, height: 32, flexShrink: 0,
+      background: BG_INSET, border: `1px solid ${selected ? ACCENT : BORDER_MED}`,
+      overflow: 'hidden', marginTop: 1,
+    }}>
+      {img && (
+        <img
+          src={img}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+          alt={name}
+          onError={e => { e.currentTarget.style.display = 'none'; }}
+        />
+      )}
+    </div>
+    <div style={{ flex: 1 }}>
+    <span style={{
+      fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px',
+      color: selected ? ACCENT : TEXT, textTransform: 'uppercase',
+      display: 'block', marginBottom: 4,
+    }}>
+      {name}
+      {selected && <span style={{ marginLeft: 8, fontSize: 7, letterSpacing: '1px' }}>◆ SELECTED</span>}
+    </span>
+    <span style={{ fontFamily: FONT_SER, fontSize: 11, fontStyle: 'italic', color: TEXT_MID, lineHeight: 1.4 }}>
+      {desc}
+    </span>
+    </div>
+  </button>
+);
 
 const MorphsPane = ({ gameState, setGameState }) => {
   const equipped       = gameState.equippedAbility;
+  const activeProj     = gameState.activeProjection ?? 'hidden';
+  const activeMorph    = gameState.activeMorph;
   const unlockedMorphs = gameState.unlockedMorphs || [];
   const observedNPCs   = gameState.observedNPCs   || {};
   const inProgress     = Object.entries(observedNPCs).filter(([, p]) => p > 0 && p < 1.0);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const id = e.dataTransfer.getData('ability_id');
-    if (!id) return;
-    setGameState(p => ({
-      ...p,
-      equippedAbility: id,
-      // Deactivate the outgoing ability if it was running
-      activeAbility: (p.equippedAbility && p.activeAbility === p.equippedAbility) ? 'NONE' : p.activeAbility,
-    }));
+  const activeAbility = gameState.activeAbility ?? 'NONE';
+  const [open, setOpen] = useState(equipped ?? 'social_crypsis');
+  const toggle = (id) => setOpen(o => o === id ? null : id);
+
+  const selectSocialForm = (formId) => {
+    setGameState(p => ({ ...p, equippedAbility: 'social_crypsis', activeProjection: formId, activeAbility: 'social_crypsis' }));
   };
+  const selectMimicryForm = (morphId) => {
+    setGameState(p => ({ ...p, equippedAbility: 'mimicry', activeMorph: morphId, activeAbility: 'mimicry' }));
+  };
+  const activate   = (id) => setGameState(p => ({ ...p, activeAbility: id }));
+  const deactivate = ()   => setGameState(p => ({ ...p, activeAbility: 'NONE' }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* ── Equip slot ── */}
+      {/* ── Ability accordion ── */}
       <div>
-        <SectionLabel>Equipped Ability</SectionLabel>
-        <div
-          onDragOver={e => e.preventDefault()}
-          onDrop={handleDrop}
-          style={{
-            minHeight: 76,
-            background: BG_INSET,
-            border: `1px dashed ${equipped ? ACCENT : BORDER_MED}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: equipped ? 'flex-start' : 'center',
-            padding: equipped ? '10px 12px' : 0,
-            gap: equipped ? 12 : 0,
+        <SectionLabel>Active Ability</SectionLabel>
+        <div style={{ border: `1px solid ${BORDER_MED}` }}>
+
+          {/* Social Crypsis */}
+          <div style={{
+            borderBottom: `1px solid ${BORDER_MED}`,
+            borderLeft: `3px solid ${activeAbility === 'social_crypsis' ? ACCENT : 'transparent'}`,
             transition: 'border-color 0.2s',
-          }}
-        >
-          {equipped ? (() => {
-            const ab = ABILITY_REGISTRY[equipped];
-            return (
-              <>
-                <div style={{
-                  width: 48, height: 48, flexShrink: 0,
-                  background: BG_DARK, overflow: 'hidden',
-                  border: `1px solid ${BORDER_MED}`,
-                }}>
-                  <img src={ab.img}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
-                    alt={ab.name}
-                    onError={e => { e.currentTarget.style.display = 'none'; }}
+          }}>
+            <AccordionHeader
+              label="Social Crypsis"
+              img="/ui/concious_thoughts/social_crypsis.png"
+              desc={ABILITY_REGISTRY.social_crypsis.desc}
+              level={gameState.abilityLevels?.social_crypsis ?? 1}
+              isOpen={open === 'social_crypsis'}
+              isActive={equipped === 'social_crypsis'}
+              isRunning={activeAbility === 'social_crypsis'}
+              onToggle={() => toggle('social_crypsis')}
+              onActivate={() => activate('social_crypsis')}
+              onDeactivate={deactivate}
+            />
+            {open === 'social_crypsis' && (
+              <div>
+                {SOCIAL_FORMS.map(form => (
+                  <FormRow
+                    key={form.id}
+                    name={form.name}
+                    img={form.img}
+                    desc={form.desc}
+                    selected={equipped === 'social_crypsis' && activeProj === form.id}
+                    onClick={() => selectSocialForm(form.id)}
                   />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: 9, letterSpacing: '2px', color: ACCENT, textTransform: 'uppercase', marginBottom: 4 }}>
-                    {ab.name}
-                  </div>
-                  <div style={{ fontFamily: FONT_SER, fontSize: 11, fontStyle: 'italic', color: TEXT_MID, lineHeight: 1.4 }}>
-                    {ab.desc}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setGameState(p => ({
-                    ...p,
-                    equippedAbility: null,
-                    activeAbility: p.activeAbility === p.equippedAbility ? 'NONE' : p.activeAbility,
-                  }))}
-                  style={{
-                    background: 'none', border: `1px solid ${BORDER}`, cursor: 'pointer',
-                    color: TEXT_DIM, fontFamily: FONT, fontSize: 7, letterSpacing: '1.5px',
-                    padding: '4px 8px', flexShrink: 0, textTransform: 'uppercase',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.color = ACCENT; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_DIM; }}
-                >
-                  Remove
-                </button>
-              </>
-            );
-          })() : (
-            <span style={{ fontFamily: FONT, fontSize: 8, color: TEXT_DIM, letterSpacing: '2px', textTransform: 'uppercase' }}>
-              Drag an ability here to equip
-            </span>
-          )}
-        </div>
-      </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-      {/* ── Ability cards ── */}
-      <div>
-        <SectionLabel>Available Abilities</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {AVAILABLE_ABILITIES.map(id => {
-            const ab         = ABILITY_REGISTRY[id];
-            const isEquipped = equipped === id;
-            const level      = gameState.abilityLevels?.[id] || 1;
-            const xp         = gameState.abilityXP?.[id]     || 0;
-            const nextXP     = XP_PER_LEVEL[Math.min(level, MAX_ABILITY_LEVEL)];
-            const prevXP     = XP_PER_LEVEL[Math.max(0, level - 1)];
-            const prog       = nextXP > prevXP ? Math.max(0, Math.min(1, (xp - prevXP) / (nextXP - prevXP))) : 1;
-            const isMax      = level >= MAX_ABILITY_LEVEL;
-            return (
-                  <div
-                    key={id}
-                    draggable={!isEquipped}
-                    onDragStart={e => e.dataTransfer.setData('ability_id', id)}
-                    style={{
-                      display: 'flex', gap: 12, alignItems: 'center',
-                      padding: '10px 12px',
-                      background: isEquipped ? `${ACCENT}12` : BG_DARK,
-                      border: `1px solid ${isEquipped ? ACCENT : BORDER}`,
-                      opacity: isEquipped ? 0.55 : 1,
-                      cursor: isEquipped ? 'default' : 'grab',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <div style={{
-                      width: 44, height: 44, flexShrink: 0,
-                      background: BG_INSET, overflow: 'hidden',
-                      border: `1px solid ${BORDER_MED}`,
-                    }}>
-                      <img src={ab.img}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        alt={ab.name}
-                        onError={e => { e.currentTarget.style.display = 'none'; }}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3,
-                      }}>
-                        <span style={{
-                          fontFamily: FONT, fontSize: 9, letterSpacing: '2px',
-                          color: isEquipped ? ACCENT : TEXT, textTransform: 'uppercase',
-                        }}>
-                          {ab.name}
-                          {isEquipped && (
-                            <span style={{ marginLeft: 8, fontSize: 7, color: ACCENT, letterSpacing: '1px' }}>◆ EQUIPPED</span>
-                          )}
-                        </span>
-                        <span style={{ fontFamily: FONT, fontSize: 7, color: GOLD, letterSpacing: '1px', flexShrink: 0 }}>
-                          {isMax ? 'MASTERED' : `LVL ${level}`}
-                        </span>
-                      </div>
-                      <div style={{ fontFamily: FONT_SER, fontSize: 11, fontStyle: 'italic', color: TEXT_MID, lineHeight: 1.4, marginBottom: isMax ? 0 : 5 }}>
-                        {ab.desc}
-                      </div>
-                      {!isMax && (
-                        <div style={{ height: 1, background: BORDER_MED }}>
-                          <div style={{ height: '100%', width: `${prog * 100}%`, background: GOLD, transition: 'width 0.6s' }} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Known Forms (always visible once mimicry is available or morphs exist) ── */}
-      {(equipped === 'mimicry' || unlockedMorphs.length > 0) && (
-        <div>
-          <SectionLabel>Known Forms</SectionLabel>
-          {unlockedMorphs.length === 0 ? (
-            <div style={{ color: TEXT_DIM, fontFamily: FONT_SER, fontStyle: 'italic', fontSize: 12, lineHeight: 1.7 }}>
-              No forms absorbed yet. Observe an NPC until fully mapped.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {unlockedMorphs.map(morph => {
-                const active = gameState.activeMorph === morph.id;
-                return (
-                  <button
+          {/* Mimicry */}
+          <div style={{
+            borderLeft: `3px solid ${activeAbility === 'mimicry' ? ACCENT : 'transparent'}`,
+            transition: 'border-color 0.2s',
+          }}>
+            <AccordionHeader
+              label="Mimicry"
+              img="/ui/concious_thoughts/mimicry.png"
+              desc={ABILITY_REGISTRY.mimicry.desc}
+              level={gameState.abilityLevels?.mimicry ?? 1}
+              isOpen={open === 'mimicry'}
+              isActive={equipped === 'mimicry'}
+              isRunning={activeAbility === 'mimicry'}
+              onToggle={() => toggle('mimicry')}
+              onActivate={() => activate('mimicry')}
+              onDeactivate={deactivate}
+            />
+            {open === 'mimicry' && (
+              <div>
+                <FormRow
+                  name={GENERIC_WHITE_FORM.name}
+                  img={GENERIC_WHITE_FORM.img}
+                  desc={GENERIC_WHITE_FORM.desc}
+                  selected={equipped === 'mimicry' && activeMorph === 'generic_white'}
+                  onClick={() => selectMimicryForm('generic_white')}
+                />
+                {unlockedMorphs.map(morph => (
+                  <FormRow
                     key={morph.id}
-                    onClick={() => setGameState(p => ({ ...p, activeMorph: active ? null : morph.id }))}
-                    style={{
-                      padding: '10px 14px', textAlign: 'left', cursor: 'pointer',
-                      background: active ? `${ACCENT}18` : BG_DARK,
-                      border: `1px solid ${active ? ACCENT : BORDER}`,
-                      color: active ? ACCENT : TEXT,
-                      fontFamily: FONT, fontSize: 9, letterSpacing: '2px',
-                      textTransform: 'uppercase', transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = BORDER_MED; e.currentTarget.style.background = BG_INSET; } }}
-                    onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = BORDER;     e.currentTarget.style.background = BG_DARK;  } }}
-                  >
-                    {morph.name.toUpperCase()}
-                    {active && <span style={{ marginLeft: 8, fontSize: 7 }}>◆ ACTIVE</span>}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                    name={morph.name}
+                    img={`/ui/portraits/${morph.id}_portrait.png`}
+                    desc={`Absorbed form. Projects the complete social frequency of ${morph.name}.`}
+                    selected={equipped === 'mimicry' && activeMorph === morph.id}
+                    onClick={() => selectMimicryForm(morph.id)}
+                  />
+                ))}
+                {unlockedMorphs.length === 0 && (
+                  <div style={{
+                    padding: '10px 14px',
+                    fontFamily: FONT_SER, fontSize: 11, fontStyle: 'italic',
+                    color: TEXT_DIM, lineHeight: 1.6,
+                    borderTop: `1px solid ${BORDER}`,
+                  }}>
+                    Observe an NPC until fully mapped to absorb their form.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-      {/* ── In-progress observations (only when Mimicry equipped) ── */}
-      {equipped === 'mimicry' && inProgress.length > 0 && (
+        </div>
+      </div>
+
+      {/* ── In-progress observations ── */}
+      {inProgress.length > 0 && (
         <div>
           <SectionLabel>Observing</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -649,25 +727,30 @@ export const StatusPanel = ({ gameState, setGameState }) => {
             display: 'flex',
             flexShrink: 0,
           }}>
-            {RIGHT_TABS.map(t => (
+            {RIGHT_TABS.map(t => {
+              const morphRunning = t === 'MORPHS' && gameState.activeAbility && gameState.activeAbility !== 'NONE';
+              const isCurrent    = rightTab === t;
+              return (
               <button
                 key={t}
                 onClick={() => setRightTab(t)}
                 style={{
-                  background: 'none', border: 'none',
-                  borderBottom: rightTab === t ? `2px solid ${ACCENT}` : '2px solid transparent',
-                  color: rightTab === t ? ACCENT : TEXT_DIM,
+                  background: morphRunning && !isCurrent ? `${ACCENT}10` : 'none',
+                  border: 'none',
+                  borderBottom: isCurrent ? `2px solid ${ACCENT}` : morphRunning ? `2px solid ${ACCENT}60` : '2px solid transparent',
+                  color: isCurrent ? ACCENT : morphRunning ? ACCENT : TEXT_DIM,
                   fontFamily: FONT, fontSize: 8, letterSpacing: '2.5px',
                   textTransform: 'uppercase',
                   padding: '10px 20px 10px 0',
                   marginBottom: -1,
                   cursor: 'pointer',
-                  transition: 'color 0.15s, border-color 0.15s',
+                  transition: 'color 0.15s, border-color 0.15s, background 0.15s',
                 }}
               >
-                {t}
+                {t}{morphRunning && !isCurrent ? ' ◆' : ''}
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {/* Right scrollable content */}

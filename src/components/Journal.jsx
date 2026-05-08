@@ -333,8 +333,7 @@ const PeoplePane = ({ gameState }) => {
   const active = selected ? PEOPLE_REGISTRY[selected] : null;
   const level  = active ? (knowledge[active.id] || 0) : 0;
 
-  const MEDIA_W = 210;
-  const MEDIA_H = 280; // 3:4
+  const MEDIA_W = 240; // 20% smaller than 300
 
   if (visible.length === 0) {
     return (
@@ -347,7 +346,7 @@ const PeoplePane = ({ gameState }) => {
   const showVideo = active?.video && !videoErrors[active.id];
 
   return (
-    <div style={{ display: 'flex', gap: 16, minHeight: 0 }}>
+    <div style={{ display: 'flex', gap: 16, minHeight: 0, alignItems: 'stretch' }}>
 
       {/* Col 1 — selection list */}
       <div style={{ width: 150, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -356,11 +355,11 @@ const PeoplePane = ({ gameState }) => {
         ))}
       </div>
 
-      {/* Col 2 — portrait / 360 video */}
+      {/* Col 2 — portrait / 360 video — stretches to full row height */}
       {active && (
-        <div style={{ width: MEDIA_W, height: MEDIA_H, flexShrink: 0 }}>
+        <div style={{ width: MEDIA_W, flexShrink: 0, minHeight: 400 }}>
           <div style={{
-            width: MEDIA_W, height: MEDIA_H,
+            width: MEDIA_W, height: '100%', minHeight: 400,
             overflow: 'hidden', position: 'relative',
           }}>
             {showVideo ? (
@@ -369,6 +368,7 @@ const PeoplePane = ({ gameState }) => {
                 src={active.video}
                 autoPlay loop muted playsInline
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onCanPlay={e => { e.currentTarget.playbackRate = 0.7; }}
                 onError={() => setVideoErrors(p => ({ ...p, [active.id]: true }))}
               />
             ) : active.image ? (
@@ -529,7 +529,7 @@ export const Journal = ({ gameState }) => {
   return (
     <div
       style={{
-        width: 700,
+        width: 860,
         maxHeight: 600,
         background: BG,
         borderTop: `2px solid ${ACCENT}`,

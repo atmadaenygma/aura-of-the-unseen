@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AURA OF THE UNSEEN — CANONICAL COLOUR PALETTE
  * ─────────────────────────────────────────────────────────────────────────────
  * THIS IS THE SINGLE SOURCE OF TRUTH FOR ALL COLOURS IN THE GAME.
@@ -53,7 +53,7 @@ export const STATUS_PRESENT  = '#4a6a8a'; // neutral-watchful (mood: PRESENT)
 export const STATUS_WARN     = '#b08030'; // caution — amber, unsettled, suspected
 export const STATUS_NOTICE   = '#7a6a3a'; // low-level awareness
 export const STATUS_DANGER   = '#c0392b'; // danger, failure, critical
-export const STATUS_MORPH    = '#2a5a3a'; // morph stability at healthy level
+export const STATUS_AURA    = '#2a5a3a'; // morph stability at healthy level
 export const STATUS_GIVE     = '#7a5a2a'; // GIVE memory type label (journal)
 
 // ── Stats bar (HUD green strip) ────────────────────────────────────────────────

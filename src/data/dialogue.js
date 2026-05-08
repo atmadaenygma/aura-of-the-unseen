@@ -38,7 +38,7 @@ export const DIALOGUE_DATA = {
         next: "branch_truth",
         requireNoFlag: "silas_betrayed",
       },
-      { text: "'You seem troubled. What is it?'", next: "silas_note_request", requireNoFlag: "silas_betrayed" },
+      { text: "'You seem troubled. What is it?'", next: "silas_note_request", requireNoFlag: "silas_betrayed", flagTrigger: "silas_quest_asked", questHint: true },
       {
         text: "'I found something in the shelves — a folded note. Is it yours?'",
         next: "silas_note_receive",

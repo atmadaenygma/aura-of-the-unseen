@@ -32,6 +32,6 @@ export const QUEST_REGISTRY = [
     failedIf: (gs) => !!gs.flags?.silas_betrayed,
     failText:
       "You gave the note to the Overseer. He laughed. Silas knows what was done — and by whom.",
-    visibleIf: () => true,
+    visibleIf: (gs) => !!gs.flags?.silas_quest_asked,
   },
 ];

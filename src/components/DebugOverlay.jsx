@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const WORLD_W    = 1280;
-const WORLD_H    = 800;
 const GRID_MINOR = 50;
 const GRID_MAJOR = 100;
 
@@ -64,6 +62,9 @@ export const DebugOverlay = ({ pos, manifest, active, zoom, telemetry }) => {
   const [layers, setLayers] = useState(DEFAULTS);
 
   if (!active) return null;
+
+  const WORLD_W = manifest?.worldW ?? 1280;
+  const WORLD_H = manifest?.worldH ?? 800;
 
   const toggle = (key) => setLayers(prev => ({ ...prev, [key]: !prev[key] }));
 

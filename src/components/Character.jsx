@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { NPC_OBSERVATION, DEFAULT_OBSERVATION, XP_PER_LEVEL } from '../data/npcObservation';
 
@@ -10,47 +10,59 @@ const computeAbilityLevel = (xp) => {
   return 1;
 };
 
-// --- !!! ARCHITECT'S LOCKED ASSET MATRIX - DO NOT ALTER !!! ---
+// --- SPRITE MATRIX ---
+// new_maya_* files are used for walk states — explicit files for each direction,
+// no horizontal flip needed (each direction has its own asset).
+// Idle and crouch keep the old sprites until new_maya versions are added.
+// When adding new_maya idle/crouch/run, replace the fallback lines below.
 const KINETIC_LOCKED_DATA = (dir, isMoving, isKneeling) => {
   const path = '/sprites/protagonist/';
-  let src = `${path}down_idle.webm`;
+  let src  = `${path}down_idle.webm`;
   let flip = false;
 
   if (isKneeling) {
+    // ── Crouch — old sprites until new_maya crouch assets are added ──────────
     if (isMoving) {
       if (dir.includes('UP')) src = `${path}crouch_walk_up.webm`;
       else src = `${path}crouch_walk_down.webm`;
       if (dir.includes('RIGHT')) flip = true;
     } else {
-      if (dir === 'UP')                 src = `${path}crouch_idle_up.webm`;
-      else if (dir === 'DOWN')          src = `${path}crouch_idle_left_down.webm`;
-      else if (dir.includes('UP_LEFT')) src = `${path}crouch_up_left_idle.webm`;
+      if (dir === 'UP')                  src = `${path}crouch_idle_up.webm`;
+      else if (dir === 'DOWN')           src = `${path}crouch_idle_left_down.webm`;
+      else if (dir.includes('UP_LEFT'))  src = `${path}crouch_up_left_idle.webm`;
       else if (dir.includes('UP_RIGHT')) { src = `${path}crouch_up_left_idle.webm`; flip = true; }
-      else if (dir.includes('RIGHT'))   { src = `${path}crouch_idle_left.webm`; flip = true; }
-      else                              src = `${path}crouch_idle_left.webm`;
+      else if (dir.includes('RIGHT'))    { src = `${path}crouch_idle_left.webm`; flip = true; }
+      else                               src = `${path}crouch_idle_left.webm`;
     }
   } else if (isMoving) {
-    if (dir === 'UP')         src = `${path}walk_up.webm`;
-    else if (dir === 'DOWN')  src = `${path}walk_down.webm`;
-    else if (dir === 'LEFT')  src = `${path}walk_left.webm`;
-    else if (dir === 'RIGHT') { src = `${path}walk_left.webm`; flip = true; }
-    else if (dir === 'UP_LEFT')    src = `${path}walk_up_left.webm`;
-    else if (dir === 'UP_RIGHT')   { src = `${path}walk_up_left.webm`; flip = true; }
-    else if (dir === 'DOWN_RIGHT') src = `${path}walk_down_right.webm`;
-    else if (dir === 'DOWN_LEFT')  { src = `${path}walk_down_right.webm`; flip = true; }
+    // ── Walk — new_maya explicit files, no flip ───────────────────────────────
+    if      (dir === 'UP')         src = `${path}new_maya_up_walk.webm`;
+    else if (dir === 'DOWN')       src = `${path}new_maya_down_walk.webm`;
+    else if (dir === 'LEFT')       { src = `${path}new_maya_right_walk.webm`; flip = true; }
+    else if (dir === 'RIGHT')      src = `${path}new_maya_right_walk.webm`;
+    else if (dir === 'UP_LEFT')    src = `${path}new_maya_left_up_walk.webm`;
+    else if (dir === 'UP_RIGHT')   src = `${path}new_maya_up_right_walk.webm`;
+    else if (dir === 'DOWN_LEFT')  src = `${path}new_maya_left_down_walk.webm`;
+    else if (dir === 'DOWN_RIGHT') src = `${path}new_maya_right_walk.webm`;     // flip of left_down
+    else                           src = `${path}new_maya_down_walk.webm`;
   } else {
-    if (dir === 'UP')         src = `${path}idle_up.webm`;
-    else if (dir === 'DOWN')  src = `${path}down_idle.webm`;
-    else if (dir === 'LEFT')  src = `${path}idle_left.webm`;
-    else if (dir === 'RIGHT') { src = `${path}idle_left.webm`; flip = true; }
-    else if (dir.includes('UP')) { src = `${path}idle_up_left.webm`; flip = dir.includes('RIGHT'); }
-    else src = `${path}down_idle.webm`;
+    // ── Idle ─────────────────────────────────────────────────────────────────
+    if      (dir === 'UP')           src = `${path}new_maya_up_left_idle.webm`;
+    else if (dir === 'UP_LEFT')      src = `${path}new_maya_up_left_idle.webm`;
+    else if (dir === 'UP_RIGHT')     { src = `${path}new_maya_up_left_idle.webm`; flip = true; }
+    else if (dir === 'LEFT')         { src = `${path}new_maya_down_right_idle.webm`; flip = true; }
+    else if (dir === 'RIGHT')        src = `${path}new_maya_down_right_idle.webm`;
+    else if (dir === 'DOWN')         src = `${path}new_maya_down_right_idle.webm`;
+    else if (dir === 'DOWN_RIGHT')   src = `${path}new_maya_down_right_idle.webm`;
+    else if (dir === 'DOWN_LEFT')    { src = `${path}new_maya_down_right_idle.webm`; flip = true; }
+    else                             src = `${path}new_maya_down_right_idle.webm`;
   }
   return { src, flip };
 };
 
 export const Character = ({
-  initialPos, zoom, gameState, setGameState,
+  initialPos, zoom, worldW = 1280, worldH = 800, characterScale = 1, moveScale = 1,
+  gameState, setGameState,
   checkCollision, onNearbyEntity, onInteract, activeUI
 }) => {
   const pos        = useRef({ ...initialPos });
@@ -402,10 +414,10 @@ export const Character = ({
             // Ordinary NPCs unlock immediately; special NPCs need items+knowledge first
             const readyToUnlock = justDone
               && !req.special
-              && !p.unlockedMorphs.find(m => m.id === npcId);
+              && !p.knownAuras.find(m => m.id === npcId);
             const newUnlocked = readyToUnlock
-              ? [...p.unlockedMorphs, { id: npcId, name: p.nearbyNPC.name || npcId }]
-              : p.unlockedMorphs;
+              ? [...p.knownAuras, { id: npcId, name: p.nearbyNPC.name || npcId }]
+              : p.knownAuras;
 
             // Gain Mimicry XP while observing
             const newXP    = (p.abilityXP?.mimicry || 0) + 0.05;
@@ -414,23 +426,23 @@ export const Character = ({
             return {
               ...p,
               observedNPCs:  { ...p.observedNPCs, [npcId]: next },
-              unlockedMorphs: newUnlocked,
+              knownAuras: newUnlocked,
               abilityXP:     { ...(p.abilityXP || {}), mimicry: newXP },
               abilityLevels: { ...(p.abilityLevels || {}), mimicry: newLevel },
             };
           });
         }
 
-        // ── Social Crypsis: drain Morph Stability while the aura is active ──────
+        // ── Social Crypsis: drain Aura Stability while the aura is active ──────
         if (gameStateRef.current.activeAbility === 'social_crypsis') {
           setGameStateRef.current(p => {
-            const newStability = Math.max(0, p.morphStability - 0.04);
+            const newStability = Math.max(0, p.auraStability - 0.04);
             const newXP        = (p.abilityXP?.social_crypsis || 0) + 0.01;
             const newLevel     = computeAbilityLevel(newXP);
-            // Deactivate automatically if Morph Stability collapses
+            // Deactivate automatically if Aura Stability collapses
             return {
               ...p,
-              morphStability: newStability,
+              auraStability: newStability,
               activeAbility:  newStability <= 0 ? 'NONE' : p.activeAbility,
               abilityXP:      { ...(p.abilityXP || {}), social_crypsis: newXP },
               abilityLevels:  { ...(p.abilityLevels || {}), social_crypsis: newLevel },
@@ -451,7 +463,7 @@ export const Character = ({
           const len = Math.sqrt(dx * dx + dy * dy);
           dx /= len; dy /= len;
           const baseSpeed = gpMoving ? 4.4 : 2.2;
-          const speed = isKneelingRef.current ? 1.1 : (keysPressed.current['shift'] || gpSprintRef.current ? 4.0 : baseSpeed);
+          const speed = (isKneelingRef.current ? 1.1 : (keysPressed.current['shift'] || gpSprintRef.current ? 4.0 : baseSpeed)) * moveScale;
           const nX = pos.current.x + dx * speed;
           const nY = pos.current.y + dy * speed;
           res = checkCollisionRef.current(nX, nY);
@@ -464,7 +476,8 @@ export const Character = ({
           const canMove = res.type === 'WALK' || res.type === 'EXIT' ||
               (res.type === 'HIDE_ZONE' && isKneelingRef.current);
           if (canMove) {
-            pos.current.x = nX; pos.current.y = nY;
+            pos.current.x = Math.max(0, Math.min(worldW, nX));
+            pos.current.y = Math.max(0, Math.min(worldH, nY));
             // Only update hide zone tracking when Maya actually moves into/out of the zone.
             // Checking the proposed position (res) when movement is rejected would set this
             // true while Maya stands at the boundary — blocking [C] uncrouch incorrectly.
@@ -513,13 +526,21 @@ export const Character = ({
 
       const world = document.getElementById('world-container');
       if (world) {
+        // Use design resolution (1920×1080) not physical screen size —
+        // the world-container lives inside the fixed design canvas.
+        const VW = 1920;
+        const VH = 1080;
+        const maxCamX = Math.max(0, worldW * zoom - VW);
+        const maxCamY = Math.max(0, worldH * zoom - VH);
         const camX = Math.max(0, Math.min(
-          pos.current.x * zoom - window.innerWidth  / 2,
-          1280 * zoom - window.innerWidth
+          pos.current.x * zoom - VW / 2,
+          maxCamX
         ));
+        // Bias vertical centre 40% from top (instead of 50%) so the camera
+        // reaches world y=0 sooner and shows more scene above Maya.
         const camY = Math.max(0, Math.min(
-          pos.current.y * zoom - window.innerHeight / 2,
-          800  * zoom - window.innerHeight
+          pos.current.y * zoom - VH * 0.4,
+          maxCamY
         ));
         world.style.transform = `translate3d(${-camX}px, ${-camY}px, 0)`;
       }
@@ -533,7 +554,7 @@ export const Character = ({
 
   return (
     <>
-      <div ref={playerRef} style={{ position: 'absolute', width: 85 * zoom, pointerEvents: 'none' }}>
+      <div ref={playerRef} style={{ position: 'absolute', width: 168 * zoom * characterScale, pointerEvents: 'none' }}>
         <video
           key={animSrc}
           autoPlay loop muted playsInline

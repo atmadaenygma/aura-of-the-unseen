@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { PASSIVE_ABILITIES, XP_PER_LEVEL, MAX_ABILITY_LEVEL } from '../data/npcObservation';
 import { useTextScale } from '../context/TextScaleContext';
 
@@ -16,7 +16,7 @@ const GOLD       = '#b89a3a';
 const FONT       = 'Courier New, monospace';
 const FONT_SER   = 'Georgia, serif';
 
-const RIGHT_TABS = ['MORPHS', 'SOCIAL'];
+const RIGHT_TABS = ['AURAS', 'SOCIAL'];
 
 // ── NPC display names — covers both worldManifest ids and registry ids ─────────
 const NPC_NAMES = {
@@ -91,9 +91,9 @@ const SectionLabel = ({ children }) => (
 
 // ── SELF tab ───────────────────────────────────────────────────────────────────
 const SelfPane = ({ gameState }) => {
-  const { morphStability = 100, vigor = 100, hunger = 100, mayaMood = 50, activeMorph, unlockedMorphs = [] } = gameState;
+  const { auraStability = 100, vigor = 100, hunger = 100, mayaMood = 50, activeAura, knownAuras = [] } = gameState;
   const mood           = getMood(mayaMood);
-  const activeMorphData = unlockedMorphs.find(m => m.id === activeMorph);
+  const activeAuraData = knownAuras.find(m => m.id === activeAura);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -105,7 +105,7 @@ const SelfPane = ({ gameState }) => {
           background: BG_INSET, border: `1px solid ${BORDER_MED}`, overflow: 'hidden',
         }}>
           <img
-            src="/ui/portraits/protagonist_portrait.png"
+            src="/ui/portraits/new_maya.webp"
             style={{ width: '100%', display: 'block', opacity: 0.85 }}
             alt="Maya"
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -118,8 +118,8 @@ const SelfPane = ({ gameState }) => {
           </div>
           <div>
             <div style={{ fontFamily: FONT, fontSize: 7, letterSpacing: '2px', color: TEXT_DIM, textTransform: 'uppercase', marginBottom: 3 }}>Active Form</div>
-            <div style={{ fontFamily: FONT, fontSize: 10, letterSpacing: '1px', color: activeMorphData ? ACCENT : TEXT_MID }}>
-              {activeMorphData?.name || 'None'}
+            <div style={{ fontFamily: FONT, fontSize: 10, letterSpacing: '1px', color: activeAuraData ? ACCENT : TEXT_MID }}>
+              {activeAuraData?.name || 'None'}
             </div>
           </div>
         </div>
@@ -128,7 +128,7 @@ const SelfPane = ({ gameState }) => {
       {/* Stats */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <SectionLabel>Vitals</SectionLabel>
-        <StatBar label="Morph Stability" value={morphStability} color={morphStability < 25 ? '#c0392b' : ACCENT} />
+        <StatBar label="Aura Stability" value={auraStability} color={auraStability < 25 ? '#c0392b' : ACCENT} />
         <StatBar label="Vigor"          value={vigor}          color="#4a8a6a" />
         <StatBar label="Hunger"         value={hunger}         color={hunger < 25 ? '#c0392b' : hunger < 55 ? '#b08030' : '#4a8a6a'} />
       </div>
@@ -166,7 +166,7 @@ const ABILITY_REGISTRY = {
   social_crypsis: {
     id: 'social_crypsis',
     name: 'Social Crypsis',
-    desc: 'Blend into surroundings. While hidden, Morph Stability drains slowly.',
+    desc: 'Blend into surroundings. While hidden, Aura Stability drains slowly.',
     img: '/ui/concious_thoughts/social_crypsis.png',
   },
   mimicry: {
@@ -338,11 +338,11 @@ const FormRow = ({ name, img, desc, selected, onClick }) => (
   </button>
 );
 
-const MorphsPane = ({ gameState, setGameState }) => {
+const AurasPane = ({ gameState, setGameState }) => {
   const equipped       = gameState.equippedAbility;
   const activeProj     = gameState.activeProjection ?? 'hidden';
-  const activeMorph    = gameState.activeMorph;
-  const unlockedMorphs = gameState.unlockedMorphs || [];
+  const activeAura    = gameState.activeAura;
+  const knownAuras = gameState.knownAuras || [];
   const observedNPCs   = gameState.observedNPCs   || {};
   const inProgress     = Object.entries(observedNPCs).filter(([, p]) => p > 0 && p < 1.0);
 
@@ -354,7 +354,7 @@ const MorphsPane = ({ gameState, setGameState }) => {
     setGameState(p => ({ ...p, equippedAbility: 'social_crypsis', activeProjection: formId, activeAbility: 'social_crypsis' }));
   };
   const selectMimicryForm = (morphId) => {
-    setGameState(p => ({ ...p, equippedAbility: 'mimicry', activeMorph: morphId, activeAbility: 'mimicry' }));
+    setGameState(p => ({ ...p, equippedAbility: 'mimicry', activeAura: morphId, activeAbility: 'mimicry' }));
   };
   const activate   = (id) => setGameState(p => ({ ...p, activeAbility: id }));
   const deactivate = ()   => setGameState(p => ({ ...p, activeAbility: 'NONE' }));
@@ -424,20 +424,20 @@ const MorphsPane = ({ gameState, setGameState }) => {
                   name={GENERIC_WHITE_FORM.name}
                   img={GENERIC_WHITE_FORM.img}
                   desc={GENERIC_WHITE_FORM.desc}
-                  selected={equipped === 'mimicry' && activeMorph === 'generic_white'}
+                  selected={equipped === 'mimicry' && activeAura === 'generic_white'}
                   onClick={() => selectMimicryForm('generic_white')}
                 />
-                {unlockedMorphs.map(morph => (
+                {knownAuras.map(morph => (
                   <FormRow
                     key={morph.id}
                     name={morph.name}
                     img={`/ui/portraits/${morph.id}_portrait.png`}
                     desc={`Absorbed form. Projects the complete social frequency of ${morph.name}.`}
-                    selected={equipped === 'mimicry' && activeMorph === morph.id}
+                    selected={equipped === 'mimicry' && activeAura === morph.id}
                     onClick={() => selectMimicryForm(morph.id)}
                   />
                 ))}
-                {unlockedMorphs.length === 0 && (
+                {knownAuras.length === 0 && (
                   <div style={{
                     padding: '10px 14px',
                     fontFamily: FONT_SER, fontSize: 11, fontStyle: 'italic',
@@ -545,7 +545,7 @@ const SocialPane = ({ gameState }) => {
   const suspicion        = gameState.npcSuspicion     || {};
   const npcRelationships = gameState.npcRelationships || {};
   const standing         = getSocialStanding(gameState);
-  const activeMorph      = gameState.unlockedMorphs?.find(m => m.id === gameState.activeMorph);
+  const activeAura      = gameState.knownAuras?.find(m => m.id === gameState.activeAura);
 
   // Relationships: only show NPCs with a score set
   const relEntries = Object.entries(npcRelationships).map(([id, val]) => ({
@@ -579,7 +579,7 @@ const SocialPane = ({ gameState }) => {
           {[
             { label: 'Position', value: 'Domestic Servant' },
             { label: 'Form',     value: gameState.activeForm?.replace(/_/g, ' ') || 'Social Crypsis' },
-            { label: 'Morph',    value: activeMorph?.name || 'None' },
+            { label: 'Morph',    value: activeAura?.name || 'None' },
           ].map(({ label, value }) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
               <span style={{ fontFamily: FONT, fontSize: 8, color: TEXT_DIM, letterSpacing: '1px', textTransform: 'uppercase' }}>{label}</span>
@@ -669,7 +669,7 @@ const SocialPane = ({ gameState }) => {
 
 // ── StatusPanel ────────────────────────────────────────────────────────────────
 export const StatusPanel = ({ gameState, setGameState }) => {
-  const [rightTab, setRightTab] = useState('MORPHS');
+  const [rightTab, setRightTab] = useState('AURAS');
   const zoom = useTextScale();
 
   return (
@@ -728,17 +728,17 @@ export const StatusPanel = ({ gameState, setGameState }) => {
             flexShrink: 0,
           }}>
             {RIGHT_TABS.map(t => {
-              const morphRunning = t === 'MORPHS' && gameState.activeAbility && gameState.activeAbility !== 'NONE';
+              const auraRunning = t === 'AURAS' && gameState.activeAbility && gameState.activeAbility !== 'NONE';
               const isCurrent    = rightTab === t;
               return (
               <button
                 key={t}
                 onClick={() => setRightTab(t)}
                 style={{
-                  background: morphRunning && !isCurrent ? `${ACCENT}10` : 'none',
+                  background: auraRunning && !isCurrent ? `${ACCENT}10` : 'none',
                   border: 'none',
-                  borderBottom: isCurrent ? `2px solid ${ACCENT}` : morphRunning ? `2px solid ${ACCENT}60` : '2px solid transparent',
-                  color: isCurrent ? ACCENT : morphRunning ? ACCENT : TEXT_DIM,
+                  borderBottom: isCurrent ? `2px solid ${ACCENT}` : auraRunning ? `2px solid ${ACCENT}60` : '2px solid transparent',
+                  color: isCurrent ? ACCENT : auraRunning ? ACCENT : TEXT_DIM,
                   fontFamily: FONT, fontSize: 8, letterSpacing: '2.5px',
                   textTransform: 'uppercase',
                   padding: '10px 20px 10px 0',
@@ -747,7 +747,7 @@ export const StatusPanel = ({ gameState, setGameState }) => {
                   transition: 'color 0.15s, border-color 0.15s, background 0.15s',
                 }}
               >
-                {t}{morphRunning && !isCurrent ? ' ◆' : ''}
+                {t}{auraRunning && !isCurrent ? ' ◆' : ''}
               </button>
               );
             })}
@@ -758,7 +758,7 @@ export const StatusPanel = ({ gameState, setGameState }) => {
             className="status-scroll"
             style={{ flex: 1, overflowY: 'auto', padding: '18px 20px 24px' }}
           >
-            {rightTab === 'MORPHS' && <MorphsPane gameState={gameState} setGameState={setGameState} />}
+            {rightTab === 'AURAS' && <AurasPane gameState={gameState} setGameState={setGameState} />}
             {rightTab === 'SOCIAL' && <SocialPane gameState={gameState} />}
           </div>
 

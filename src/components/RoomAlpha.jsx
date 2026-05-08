@@ -1,4 +1,4 @@
-// inside the game loop or [E] listener
+﻿// inside the game loop or [E] listener
 const onKey = (e) => {
   if (e.key.toLowerCase() === 'e') {
     // 1. Get the color from our dual-mask check
@@ -19,7 +19,7 @@ const onKey = (e) => {
         setGameState(prev => ({
           ...prev,
           money: prev.money + (entity.rewardMoney || 0),
-          morphStability: Math.max(0, prev.morphStability + entity.impact)
+          auraStability: Math.max(0, prev.auraStability + entity.impact)
         }));
       }
     }

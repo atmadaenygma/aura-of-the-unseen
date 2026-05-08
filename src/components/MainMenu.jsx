@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { loadGame } from '../utils/persistence';
-import { music as audioMusic, MUSIC_TRACKS } from '../utils/audio';
+import { loadGame, clearSave } from '../utils/persistence';
+import { music as audioMusic, sfx as audioSfx, MUSIC_TRACKS, setMasterVolume, getMasterVolume, getMusicVolume, getSfxVolume } from '../utils/audio';
+import { useGamepadKeyboard } from '../hooks/useGamepadKeyboard';
 
 // ── Custom font loading ────────────────────────────────────────────────────────
 // Drop any .ttf / .woff2 into public/fonts/ and update the src below.
@@ -26,7 +27,7 @@ const FONT_FACE_STYLE = `
 // ── Portrait rotation ──────────────────────────────────────────────────────────
 // Add new portraits to this list as characters are created.
 const PORTRAITS = [
-  '/ui/portraits/protagonist_portrait.png',
+  '/ui/portraits/new_maya.webp',
   '/ui/portraits/silas_portrait.png',
   '/ui/portraits/overseer_portrait.png',
   '/ui/portraits/Angus_portrait.png',
@@ -92,18 +93,27 @@ const VideoTab = () => {
   </>);
 };
 const SoundTab = () => {
-  const [master, setMaster]   = useState(80);
-  const [msc,    setMsc]      = useState(70);
-  const [sfx,    setSfx]      = useState(90);
-  const [ambient,setAmbient]  = useState(60);
-  const [mute,   setMute]     = useState(false);
+  const [master,   setMasterState] = useState(() => Math.round(getMasterVolume() * 100));
+  const [musicVol, setMusicState]  = useState(() => Math.round(getMusicVolume()  * 100));
+  const [sfxVol,   setSfxState]    = useState(() => Math.round(getSfxVolume()    * 100));
+  const [mute,     setMute]        = useState(false);
+  const preMuteRef = useRef(getMasterVolume());
+
+  const handleMute = (v) => {
+    setMute(v);
+    if (v) { preMuteRef.current = getMasterVolume(); setMasterVolume(0); }
+    else   { setMasterVolume(preMuteRef.current); }
+  };
+  const handleMaster = (v) => { setMasterState(v); if (!mute) setMasterVolume(v / 100); };
+  const handleMusic  = (v) => { setMusicState(v);  audioMusic.setVolume(v / 100); };
+  const handleSfx    = (v) => { setSfxState(v);    audioSfx.setVolume(v / 100);   };
+
   return (<>
     <SettingsSection>Volume</SettingsSection>
-    <SettingsRow label="Mute All"><SettingsToggle value={mute} onChange={setMute} /></SettingsRow>
-    <SettingsRow label="Master"><SettingsSlider value={master} onChange={setMaster} /></SettingsRow>
-    <SettingsRow label="Music"><SettingsSlider value={msc} onChange={setMsc} /></SettingsRow>
-    <SettingsRow label="Sound Effects"><SettingsSlider value={sfx} onChange={setSfx} /></SettingsRow>
-    <SettingsRow label="Ambient"><SettingsSlider value={ambient} onChange={setAmbient} /></SettingsRow>
+    <SettingsRow label="Mute All"><SettingsToggle value={mute} onChange={handleMute} /></SettingsRow>
+    <SettingsRow label="Master"><SettingsSlider value={master} onChange={handleMaster} /></SettingsRow>
+    <SettingsRow label="Music"><SettingsSlider value={musicVol} onChange={handleMusic} /></SettingsRow>
+    <SettingsRow label="Sound Effects"><SettingsSlider value={sfxVol} onChange={handleSfx} /></SettingsRow>
   </>);
 };
 const LanguageTab = () => {
@@ -325,8 +335,77 @@ export const MainMenu = ({ saveSlots, onLoadSlot, onNewGame, gameState, setGameS
   const [popover,         setPopover]         = useState(null);
   const [slotsOpen,       setSlotsOpen]       = useState(false);
   const [mouse,           setMouse]           = useState({ x: 0.5, y: 0.5 });
+  const [gpIdx,           setGpIdx]           = useState(-1); // -1 = mouse mode
 
-  const hasSave = saveSlots?.some(s => !s.empty) ?? false;
+  const [slots,             setSlots]             = useState(saveSlots ?? []);
+  const [confirmDeleteSlot, setConfirmDeleteSlot] = useState(null);
+  const hasSave = slots.some(s => !s.empty);
+  const gpIdxRef          = useRef(-1);
+  const actionsRef   = useRef([]);
+  const itemCountRef = useRef(5);
+
+  // Build the full navigable item list — includes slot cards when accordion is open
+  const occupiedSlots = slots.filter(s => !s.empty);
+  const slotActions   = slotsOpen
+    ? occupiedSlots.map(s => ({ disabled: false, action: () => onLoadSlot(s.slot) }))
+    : [];
+
+  actionsRef.current = [
+    { disabled: !hasSave, action: hasSave ? () => onLoadSlot(1)          : null }, // 0 CONTINUE — auto-loads slot 1
+    { disabled: !hasSave, action: hasSave ? () => setSlotsOpen(o => !o)  : null }, // 1 LOAD — opens slot picker
+    ...slotActions,                                                                 // 2…N slots
+    { disabled: false,    action: onNewGame                                      }, // NEW GAME
+    { disabled: false,    action: () => setPopover('options')                    }, // OPTIONS
+    { disabled: false,    action: () => setPopover('special')                    }, // SPECIAL
+  ];
+  itemCountRef.current = actionsRef.current.length;
+
+  // Gamepad keyboard bridge — only active inside a popover (sliders, selects, scroll)
+  useGamepadKeyboard(!!popover);
+
+  // Dedicated D-pad menu navigator — active when no popover is open
+  useEffect(() => {
+    if (popover) return;
+    let frame;
+    const prev = {};
+
+    const poll = () => {
+      const pads = navigator.getGamepads?.() ?? [];
+      let gp = null;
+      for (let i = 0; i < pads.length; i++) {
+        if (pads[i]?.mapping === 'standard') { gp = pads[i]; break; }
+      }
+      if (!gp) for (let i = 0; i < pads.length; i++) { if (pads[i]) { gp = pads[i]; break; } }
+
+      if (gp) {
+        const btn  = (i) => !!(gp.buttons[i]?.pressed) || (gp.buttons[i]?.value ?? 0) > 0.5;
+        const just = (i) => btn(i) && !prev[i];
+        const N    = itemCountRef.current;
+
+        const dUp   = just(12) || (gp.axes[1] < -0.5 && !(prev._ly < -0.5));
+        const dDown = just(13) || (gp.axes[1] >  0.5 && !(prev._ly >  0.5));
+
+        if (dDown) setGpIdx(i => { const n = i < 0 ? 0 : (i + 1) % N; gpIdxRef.current = n; return n; });
+        if (dUp)   setGpIdx(i => { const n = i < 0 ? N - 1 : (i - 1 + N) % N; gpIdxRef.current = n; return n; });
+
+        // A / Cross — fire the highlighted item; initialise prev[0]=true to avoid auto-fire
+        if (just(0) && gpIdxRef.current >= 0) {
+          const item = actionsRef.current[gpIdxRef.current];
+          if (item && !item.disabled) item.action?.();
+        }
+
+        gp.buttons.forEach((b, i) => { prev[i] = btn(i); });
+        prev._ly = gp.axes[1];
+      }
+
+      frame = requestAnimationFrame(poll);
+    };
+
+    // Seed prev[0]=true so a held A from the loading screen doesn't auto-fire
+    prev[0] = true;
+    frame = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(frame);
+  }, [popover, slotsOpen]);
 
   // Play menu music on mount — no stop on unmount so Stage's play() can crossfade
   useEffect(() => {
@@ -345,19 +424,19 @@ export const MainMenu = ({ saveSlots, onLoadSlot, onNewGame, gameState, setGameS
     return () => clearTimeout(hold);
   }, [portraitIdx]);
 
-  const closePopover   = () => setPopover(null);
-  const toggleSlots    = () => setSlotsOpen(o => !o);
-  const handleMouseMove = (e) => setMouse({
-    x: e.clientX / window.innerWidth,
-    y: e.clientY / window.innerHeight,
-  });
+  const closePopover    = () => setPopover(null);
+  const handleMouseMove = (e) => {
+    setMouse({ x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight });
+    if (gpIdxRef.current >= 0) { gpIdxRef.current = -1; setGpIdx(-1); }
+  };
 
-  const btnStyle = (disabled) => ({
+  const btnStyle = (disabled, highlighted = false) => ({
     background: 'transparent', border: 'none',
-    color: disabled ? 'rgba(214,202,176,0.3)' : BG,
+    color: disabled ? 'rgba(214,202,176,0.3)' : highlighted ? ACCENT : BG,
     fontFamily: "'NexaRustSans', 'Arial Black', sans-serif",
     fontSize: 'clamp(16px, 1.6vw, 22px)',
-    letterSpacing: '3px', textTransform: 'uppercase',
+    letterSpacing: highlighted ? '5px' : '3px',
+    textTransform: 'uppercase',
     textAlign: 'left', cursor: disabled ? 'default' : 'pointer',
     padding: '6px 0',
     textShadow: '0 1px 14px rgba(0,0,0,0.9)',
@@ -387,7 +466,7 @@ export const MainMenu = ({ saveSlots, onLoadSlot, onNewGame, gameState, setGameS
 
       {/* Portrait — right side, fades + tilts with mouse */}
       <div style={{
-        position: 'absolute', right: '10vw', bottom: 0, height: '74%',
+        position: 'absolute', right: '10vw', bottom: '-8vh', height: '90%',
         zIndex: 5,
         opacity: portraitVisible ? 1 : 0,
         perspective: '700px',
@@ -434,25 +513,38 @@ export const MainMenu = ({ saveSlots, onLoadSlot, onNewGame, gameState, setGameS
         {/* Menu items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-          {/* CONTINUE + LOAD — share one accordion slot picker */}
-          {['CONTINUE', 'LOAD'].map(label => (
-            <button key={label}
-              onClick={hasSave ? toggleSlots : undefined}
-              style={btnStyle(!hasSave)}
-              onMouseEnter={e => { if (hasSave) { e.currentTarget.style.color = ACCENT; e.currentTarget.style.letterSpacing = '5px'; } }}
-              onMouseLeave={e => { if (hasSave) { e.currentTarget.style.color = BG; e.currentTarget.style.letterSpacing = '3px'; } }}
-            >{label}</button>
-          ))}
+          {/* CONTINUE — loads slot 1 (auto-save) directly */}
+          {(() => { const hl = gpIdx === 0; return (
+            <button
+              onClick={hasSave ? () => onLoadSlot(1) : undefined}
+              style={btnStyle(!hasSave, hl)}
+              onMouseEnter={e => { if (hasSave && !hl) { e.currentTarget.style.color = ACCENT; e.currentTarget.style.letterSpacing = '5px'; } }}
+              onMouseLeave={e => { if (hasSave && !hl) { e.currentTarget.style.color = BG; e.currentTarget.style.letterSpacing = '3px'; } }}
+            >{hl ? '▶ ' : ''}CONTINUE</button>
+          ); })()}
+
+          {/* LOAD — opens slot picker accordion */}
+          {(() => { const hl = gpIdx === 1; return (
+            <button
+              onClick={hasSave ? () => setSlotsOpen(o => !o) : undefined}
+              style={btnStyle(!hasSave, hl)}
+              onMouseEnter={e => { if (hasSave && !hl) { e.currentTarget.style.color = ACCENT; e.currentTarget.style.letterSpacing = '5px'; } }}
+              onMouseLeave={e => { if (hasSave && !hl) { e.currentTarget.style.color = BG; e.currentTarget.style.letterSpacing = '3px'; } }}
+            >{hl ? '▶ ' : ''}LOAD</button>
+          ); })()}
 
           {/* Slot accordion — drops down below CONTINUE/LOAD */}
           {slotsOpen && (
             <div style={{ marginLeft: 4, marginBottom: 6 }}>
-              {(saveSlots ?? []).map(({ slot, empty, savedAt, location }) => (
+              {slots.map(({ slot, empty, savedAt, location }, si) => {
+                const slotGpIdx = 2 + (empty ? -1 : occupiedSlots.findIndex(s => s.slot === slot));
+                const slotHl    = !empty && gpIdx === slotGpIdx;
+                return (
                 <div key={slot} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '8px 12px',
-                  background: empty ? 'rgba(0,0,0,0.25)' : 'rgba(203,120,102,0.15)',
-                  borderLeft: `3px solid ${empty ? 'rgba(214,202,176,0.2)' : ACCENT}`,
+                  background: slotHl ? 'rgba(203,120,102,0.28)' : empty ? 'rgba(0,0,0,0.25)' : 'rgba(203,120,102,0.15)',
+                  borderLeft: `3px solid ${slotHl ? ACCENT : empty ? 'rgba(214,202,176,0.2)' : ACCENT}`,
                   marginBottom: 3,
                   backdropFilter: 'blur(4px)',
                 }}>
@@ -473,41 +565,72 @@ export const MainMenu = ({ saveSlots, onLoadSlot, onNewGame, gameState, setGameS
                     )}
                   </div>
                   {!empty && (
-                    <button onClick={() => onLoadSlot(slot)} style={{
-                      background: ACCENT, border: 'none', color: '#fff',
-                      fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px',
-                      padding: '5px 12px', cursor: 'pointer', textTransform: 'uppercase',
-                      flexShrink: 0,
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.opacity = '0.82'; }}
-                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-                    >LOAD</button>
+                    confirmDeleteSlot === slot ? (
+                      /* Confirm step */
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                        <span style={{ fontFamily: FONT, fontSize: 8, color: ACCENT, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                          Delete save?
+                        </span>
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button onClick={() => {
+                            clearSave(slot);
+                            setSlots(prev => prev.map(s => s.slot === slot ? { ...s, empty: true, savedAt: null, location: null } : s));
+                            setConfirmDeleteSlot(null);
+                          }} style={{
+                            background: ACCENT, border: 'none', color: '#fff',
+                            fontFamily: FONT, fontSize: 8, letterSpacing: '1px',
+                            padding: '4px 10px', cursor: 'pointer', textTransform: 'uppercase',
+                          }}>YES</button>
+                          <button onClick={() => setConfirmDeleteSlot(null)} style={{
+                            background: 'transparent', border: `1px solid rgba(214,202,176,0.4)`,
+                            color: BG, fontFamily: FONT, fontSize: 8, letterSpacing: '1px',
+                            padding: '4px 10px', cursor: 'pointer', textTransform: 'uppercase',
+                          }}>NO</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => onLoadSlot(slot)} style={{
+                          background: ACCENT, border: 'none', color: '#fff',
+                          fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px',
+                          padding: '5px 12px', cursor: 'pointer', textTransform: 'uppercase',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.opacity = '0.82'; }}
+                        onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                        >LOAD</button>
+                        <button onClick={() => setConfirmDeleteSlot(slot)} style={{
+                          background: 'transparent', border: `1px solid ${ACCENT}`,
+                          color: ACCENT, fontFamily: FONT, fontSize: 9, letterSpacing: '1px',
+                          padding: '5px 10px', cursor: 'pointer', textTransform: 'uppercase',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = `${ACCENT}20`; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        >DEL</button>
+                      </div>
+                    )
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          {/* NEW GAME */}
-          <button style={btnStyle(false)}
-            onClick={onNewGame}
-            onMouseEnter={e => { e.currentTarget.style.color = ACCENT; e.currentTarget.style.letterSpacing = '5px'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = BG; e.currentTarget.style.letterSpacing = '3px'; }}
-          >NEW GAME</button>
-
-          {/* OPTIONS */}
-          <button style={btnStyle(false)}
-            onClick={() => setPopover('options')}
-            onMouseEnter={e => { e.currentTarget.style.color = ACCENT; e.currentTarget.style.letterSpacing = '5px'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = BG; e.currentTarget.style.letterSpacing = '3px'; }}
-          >OPTIONS</button>
-
-          {/* SPECIAL */}
-          <button style={btnStyle(false)}
-            onClick={() => setPopover('special')}
-            onMouseEnter={e => { e.currentTarget.style.color = ACCENT; e.currentTarget.style.letterSpacing = '5px'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = BG; e.currentTarget.style.letterSpacing = '3px'; }}
-          >SPECIAL</button>
+          {/* NEW GAME / OPTIONS / SPECIAL — indices shift when slot cards are visible */}
+          {[
+            { label: 'NEW GAME', action: onNewGame,                     idxOffset: 0 },
+            { label: 'OPTIONS',  action: () => setPopover('options'),    idxOffset: 1 },
+            { label: 'SPECIAL',  action: () => setPopover('special'),    idxOffset: 2 },
+          ].map(({ label, action, idxOffset }) => {
+            const baseIdx = 2 + slotActions.length + idxOffset;
+            const hl      = gpIdx === baseIdx;
+            return (
+              <button key={label} style={btnStyle(false, hl)}
+                onClick={action}
+                onMouseEnter={e => { if (!hl) { e.currentTarget.style.color = ACCENT; e.currentTarget.style.letterSpacing = '5px'; } }}
+                onMouseLeave={e => { if (!hl) { e.currentTarget.style.color = BG; e.currentTarget.style.letterSpacing = '3px'; } }}
+              >{hl ? '▶ ' : ''}{label}</button>
+            );
+          })}
         </div>
       </div>
 

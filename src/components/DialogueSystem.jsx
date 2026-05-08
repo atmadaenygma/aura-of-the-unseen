@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { DIALOGUE_DATA } from '../data/dialogue';
 import { DiceCheck } from './DiceCheck';
 import { useTextScale } from '../context/TextScaleContext';
@@ -25,6 +25,8 @@ const FACET_COL = '#3a7a6a';
 
 const resolvePortrait = (speaker) => {
   if (!speaker) return null;
+  // Protagonist uses the new portrait asset
+  if (speaker.toLowerCase() === 'maya') return '/ui/portraits/new_maya.webp';
   const slug = speaker
     .toLowerCase()
     .replace(/^old /, '')  // "Old Silas" → "silas"
@@ -169,7 +171,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
     // Apply any state mutations from this choice
     const updates = { ...gameState };
     if (choice.flagTrigger) updates.flags          = { ...updates.flags, [choice.flagTrigger]: true };
-    if (choice.impact)      updates.morphStability = Math.max(0, updates.morphStability + choice.impact);
+    if (choice.impact)      updates.auraStability = Math.max(0, updates.auraStability + choice.impact);
     if (choice.rewardMoney) updates.money         += choice.rewardMoney;
     if (choice.knowledgeGain) {
       const k = { ...(updates.knowledge || {}) };
@@ -352,17 +354,20 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
                     onMouseEnter={() => setSelectedOption(i)}
                     style={{
                       background: highlighted ? ACCENT : 'transparent',
-                      border: `1px solid ${highlighted ? ACCENT : BORDER_MED}`,
-                      color: highlighted ? '#fff' : TEXT,
+                      border: `1px solid ${highlighted ? ACCENT : opt.questHint ? FACET_COL : BORDER_MED}`,
+                      color: highlighted ? '#fff' : opt.questHint ? FACET_COL : TEXT,
                       padding: '11px 14px', textAlign: 'left', cursor: 'pointer',
                       fontFamily: FONT_SER, fontSize: 16, fontWeight: '600',
                       letterSpacing: '0.3px', lineHeight: 1.3,
                       transition: 'background 0.12s, border-color 0.12s, color 0.12s',
                     }}
                   >
-                    <span style={{ color: highlighted ? 'rgba(255,255,255,0.7)' : TEXT_MID, marginRight: 8, fontFamily: FONT, fontSize: 12 }}>
+                    <span style={{ color: highlighted ? 'rgba(255,255,255,0.7)' : opt.questHint ? FACET_COL : TEXT_MID, marginRight: 8, fontFamily: FONT, fontSize: 12 }}>
                       {i + 1}.
                     </span>
+                    {opt.questHint && !highlighted && (
+                      <span style={{ fontFamily: FONT, fontSize: 9, letterSpacing: '1.5px', color: FACET_COL, marginRight: 8 }}>◆</span>
+                    )}
                     {opt.text}
                   </button>
                 );
@@ -392,7 +397,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
         pointerEvents: 'none', zIndex: 100,
       }}>
         <img
-          src="/ui/portraits/protagonist_portrait.png"
+          src="/ui/portraits/new_maya.webp"
           style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(20px 0 40px rgba(0,0,0,0.8))' }}
           alt="Maya"
         />

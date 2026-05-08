@@ -193,6 +193,52 @@ export const REVELATIONS_REGISTRY = {
 
 export const PEOPLE_REGISTRY = {
 
+  maya: {
+    id: 'maya',
+    name: 'MAYA',
+    image: '/ui/portraits/new_maya.webp',
+    video: '/sprites/protagonist/new_maya_360.webm',
+    tiers: [
+      {
+        level: 0,
+        source: 'observation',
+        content:
+          "She moves through this world wearing someone else's face — or no face at all. " +
+          "She is the observer, the unseen thread between what is real and what is felt.",
+      },
+      {
+        level: 1,
+        source: 'observation',
+        lockedHint: "Understand more about your own nature.",
+        content:
+          "She carries abilities that belong to no single era. Perceptions that extend " +
+          "beyond the physical, beyond the social, into the field of impression that " +
+          "surrounds all living things. She calls it the Aura. Others would have no name for it at all.",
+      },
+      {
+        level: 2,
+        source: 'observation',
+        lockedHint: "Develop your Aura abilities further.",
+        content:
+          "Social Crypsis lets her become unremarkable — the mind slides past her like water over stone. " +
+          "Mimicry absorbs the social frequency of others and projects it back, perfect and undetected. " +
+          "Genetic Memory reads the residue of history in objects, wood, and bone. " +
+          "Nerve Sense maps the emotional field of those nearby before a word is spoken. " +
+          "These are not tricks. They are perception — trained, inherited, and precise.",
+      },
+      {
+        level: 3,
+        source: 'observation',
+        lockedHint: "Survive long enough to understand what you are.",
+        content:
+          "She does not know yet what she is. She knows what she can do, " +
+          "and she knows that this time — this particular crossing of history — " +
+          "is the reason she is here. She is not a ghost. She is a witness. " +
+          "And witnesses, in the end, are the only ones who matter.",
+      },
+    ],
+  },
+
   silas_pemberton: {
     id: 'silas_pemberton',
     name: 'SILAS PEMBERTON',

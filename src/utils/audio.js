@@ -150,3 +150,5 @@ export const setMasterVolume = (v) => {
 };
 
 export const getMasterVolume = () => masterVolume;
+export const getMusicVolume  = () => musicVolume;
+export const getSfxVolume    = () => sfxVolume;

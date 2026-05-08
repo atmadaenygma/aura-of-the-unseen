@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { saveGame, loadGame } from '../utils/persistence';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { saveGame, loadGame, clearSave, getSaveSlots } from '../utils/persistence';
+import { setMasterVolume, getMasterVolume, getMusicVolume, getSfxVolume, music as audioMusic, sfx as audioSfx } from '../utils/audio';
 import { Journal } from './Journal';
 import { InventoryUI } from './InventoryUI';
 import { StatusPanel } from './StatusPanel';
 import { useTextScale } from '../context/TextScaleContext';
+import { useGamepadKeyboard } from '../hooks/useGamepadKeyboard';
 
 const HUD_BG     = '#d6cab0';
 const HUD_HOVER  = '#cb7866';
@@ -162,11 +164,18 @@ const SettingsSelect = ({ value, onChange, options }) => (
 // ── Settings tab content ───────────────────────────────────────────────────────
 const VideoContent = () => {
   const [quality,    setQuality]    = useState('HIGH');
-  const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(!!document.fullscreenElement);
   const [vsync,      setVsync]      = useState(true);
+
+  const handleFullscreen = (v) => {
+    setFullscreen(v);
+    if (v) document.documentElement.requestFullscreen?.().catch(() => {});
+    else   document.exitFullscreen?.().catch(() => {});
+  };
+
   return (<>
     <SettingsSection>Display</SettingsSection>
-    <SettingsRow label="Fullscreen"><SettingsToggle value={fullscreen} onChange={setFullscreen} /></SettingsRow>
+    <SettingsRow label="Fullscreen"><SettingsToggle value={fullscreen} onChange={handleFullscreen} /></SettingsRow>
     <SettingsRow label="V-Sync"><SettingsToggle value={vsync} onChange={setVsync} /></SettingsRow>
     <SettingsRow label="Quality">
       <SettingsSelect value={quality} onChange={setQuality} options={[
@@ -180,18 +189,27 @@ const VideoContent = () => {
 };
 
 const SoundContent = () => {
-  const [master,  setMaster]  = useState(80);
-  const [music,   setMusic]   = useState(70);
-  const [sfx,     setSfx]     = useState(90);
-  const [ambient, setAmbient] = useState(60);
-  const [mute,    setMute]    = useState(false);
+  const [master,   setMasterState] = useState(() => Math.round(getMasterVolume() * 100));
+  const [musicVol, setMusicState]  = useState(() => Math.round(getMusicVolume()  * 100));
+  const [sfxVol,   setSfxState]    = useState(() => Math.round(getSfxVolume()    * 100));
+  const [mute,     setMute]        = useState(false);
+  const preMuteRef = useRef(getMasterVolume());
+
+  const handleMute = (v) => {
+    setMute(v);
+    if (v) { preMuteRef.current = getMasterVolume(); setMasterVolume(0); }
+    else   { setMasterVolume(preMuteRef.current); }
+  };
+  const handleMaster = (v) => { setMasterState(v); if (!mute) setMasterVolume(v / 100); };
+  const handleMusic  = (v) => { setMusicState(v);  audioMusic.setVolume(v / 100); };
+  const handleSfx    = (v) => { setSfxState(v);    audioSfx.setVolume(v / 100);   };
+
   return (<>
     <SettingsSection>Volume</SettingsSection>
-    <SettingsRow label="Mute All"><SettingsToggle value={mute} onChange={setMute} /></SettingsRow>
-    <SettingsRow label="Master"><SettingsSlider value={master} onChange={setMaster} /></SettingsRow>
-    <SettingsRow label="Music"><SettingsSlider value={music} onChange={setMusic} /></SettingsRow>
-    <SettingsRow label="Sound Effects"><SettingsSlider value={sfx} onChange={setSfx} /></SettingsRow>
-    <SettingsRow label="Ambient"><SettingsSlider value={ambient} onChange={setAmbient} /></SettingsRow>
+    <SettingsRow label="Mute All"><SettingsToggle value={mute} onChange={handleMute} /></SettingsRow>
+    <SettingsRow label="Master"><SettingsSlider value={master} onChange={handleMaster} /></SettingsRow>
+    <SettingsRow label="Music"><SettingsSlider value={musicVol} onChange={handleMusic} /></SettingsRow>
+    <SettingsRow label="Sound Effects"><SettingsSlider value={sfxVol} onChange={handleSfx} /></SettingsRow>
   </>);
 };
 
@@ -388,9 +406,18 @@ const OPTIONS_TABS = ['VIDEO', 'SOUND', 'LANGUAGE', 'GAMEPLAY'];
 const MenuPopup = ({ gameState, setGameState, onLoad, onReset, onClose, onDebug }) => {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmQuit,  setConfirmQuit]  = useState(false);
-  const [optionsView,  setOptionsView]  = useState(null); // null = main list, 'controls', or options tab name
-  const hasSave = !!loadGame();
+  const [optionsView,  setOptionsView]  = useState(null);
+  const [slotView,          setSlotView]          = useState(null); // null | 'save' | 'load'
+  const [slots,             setSlots]             = useState(() => getSaveSlots());
+  const [confirmDeleteSlot, setConfirmDeleteSlot] = useState(null);
+  const hasSave = slots.some(s => !s.empty);
   const zoom = useTextScale();
+
+  const refreshSlots = () => setSlots(getSaveSlots());
+
+  const slotLabel = (s) => s.empty
+    ? 'Empty'
+    : `${new Date(s.savedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}${s.location ? ' · ' + s.location.replace(/_/g, ' ') : ''}`;
 
   return (
     <div
@@ -468,12 +495,45 @@ const MenuPopup = ({ gameState, setGameState, onLoad, onReset, onClose, onDebug 
       ) : (
         // ── MAIN MENU VIEW ────────────────────────────────────────────────────
         <>
-          <PopupItem label="SAVE GAME" onClick={() => { saveGame(gameState, 1); onClose(); }} />
-          <PopupItem
-            label="LOAD GAME"
-            onClick={() => { if (hasSave) { onLoad(1); onClose(); } }}
-            muted={!hasSave}
-          />
+          <PopupItem label="SAVE GAME" onClick={() => { setSlotView('save'); refreshSlots(); }} />
+          <PopupItem label="LOAD GAME" onClick={() => { setSlotView('load'); refreshSlots(); }} muted={!hasSave} />
+          {slotView && (
+            <div style={{ borderTop: `1px solid rgba(58,32,16,0.12)`, borderBottom: `1px solid rgba(58,32,16,0.12)` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 16px 4px', fontFamily: FONT, fontSize: 8, letterSpacing: '2px', color: 'rgba(58,32,16,0.5)', textTransform: 'uppercase' }}>
+                <span>{slotView === 'save' ? 'Save to slot' : 'Load from slot'}</span>
+                <button onClick={() => setSlotView(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(58,32,16,0.4)', fontFamily: FONT, fontSize: 9 }}>✕</button>
+              </div>
+              {slots.map(s => (
+                <div key={s.slot} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', borderTop: `1px solid rgba(58,32,16,0.07)` }}>
+                  <div>
+                    <div style={{ fontFamily: FONT, fontSize: 9, color: HUD_TEXT, letterSpacing: '1px', textTransform: 'uppercase' }}>Slot {s.slot}</div>
+                    <div style={{ fontFamily: FONT, fontSize: 8, color: 'rgba(58,32,16,0.45)', letterSpacing: '0.5px' }}>{slotLabel(s)}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    {slotView === 'save' && (
+                      <button onClick={() => { saveGame(gameState, s.slot); refreshSlots(); setSlotView(null); onClose(); }} style={{ fontFamily: FONT, fontSize: 8, letterSpacing: '1px', background: HUD_HOVER, color: '#fff', border: 'none', padding: '3px 9px', cursor: 'pointer' }}>SAVE</button>
+                    )}
+                    {slotView === 'load' && !s.empty && (
+                      <button onClick={() => { onLoad(s.slot); setSlotView(null); onClose(); }} style={{ fontFamily: FONT, fontSize: 8, letterSpacing: '1px', background: HUD_HOVER, color: '#fff', border: 'none', padding: '3px 9px', cursor: 'pointer' }}>LOAD</button>
+                    )}
+                    {!s.empty && (
+                      confirmDeleteSlot === s.slot ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                          <span style={{ fontFamily: FONT, fontSize: 7, color: HUD_HOVER, letterSpacing: '1px', textTransform: 'uppercase' }}>Delete?</span>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button onClick={() => { clearSave(s.slot); refreshSlots(); setConfirmDeleteSlot(null); }} style={{ fontFamily: FONT, fontSize: 7, letterSpacing: '1px', background: HUD_HOVER, color: '#fff', border: 'none', padding: '2px 7px', cursor: 'pointer' }}>YES</button>
+                            <button onClick={() => setConfirmDeleteSlot(null)} style={{ fontFamily: FONT, fontSize: 7, letterSpacing: '1px', background: 'transparent', color: HUD_TEXT, border: `1px solid rgba(58,32,16,0.3)`, padding: '2px 7px', cursor: 'pointer' }}>NO</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteSlot(s.slot)} style={{ fontFamily: FONT, fontSize: 8, letterSpacing: '1px', background: 'transparent', color: HUD_HOVER, border: `1px solid ${HUD_HOVER}`, padding: '3px 8px', cursor: 'pointer' }}>DEL</button>
+                      )
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <PopupItem label="OPTIONS"   onClick={() => setOptionsView('VIDEO')} />
           <PopupItem label="CONTROLS"  onClick={() => setOptionsView('controls')} />
           <PopupItem label="DEBUG [G]" onClick={() => { onDebug?.(); onClose(); }} />
@@ -595,12 +655,12 @@ const CONCEALMENT_REQUIRED = new Set([
   'docks',
 ]);
 
-const AuraStatsBox = ({ morphStability, vigor, hunger, activeMorph, activeAbility, currentRoom }) => {
+const AuraStatsBox = ({ auraStability, vigor, hunger, activeAura, activeAbility, currentRoom }) => {
   const [hovered, setHovered] = useState(false);
   const zoom = useTextScale();
-  const stabilityColor  = morphStability < 25 ? '#c0392b' : morphStability < 50 ? '#b08030' : '#2a5a3a';
+  const stabilityColor  = auraStability < 25 ? '#c0392b' : auraStability < 50 ? '#b08030' : '#2a5a3a';
   const hungerColor     = hunger < 25 ? '#c0392b' : hunger < 55 ? '#b08030' : '#2a7a5a';
-  const isIdle          = !activeMorph && (!activeAbility || activeAbility === 'NONE');
+  const isIdle          = !activeAura && (!activeAbility || activeAbility === 'NONE');
   const inDangerZone    = CONCEALMENT_REQUIRED.has(currentRoom);
 
   return (
@@ -627,7 +687,7 @@ const AuraStatsBox = ({ morphStability, vigor, hunger, activeMorph, activeAbilit
         zoom,
       }}>
         {[
-          { label: 'Morph Stability', value: morphStability, color: stabilityColor },
+          { label: 'Aura Stability', value: auraStability, color: stabilityColor },
           { label: 'Vigor',           value: vigor,          color: '#2a7a5a'       },
           { label: 'Hunger',          value: hunger ?? 100,  color: hungerColor     },
         ].map(({ label, value, color }) => (
@@ -658,7 +718,7 @@ const AuraStatsBox = ({ morphStability, vigor, hunger, activeMorph, activeAbilit
           }}>
             {inDangerZone
               ? 'You are exposed. In the city, a Black woman moving without concealment draws immediate suspicion. Activate an ability or remain hidden.'
-              : 'No morph or aura ability active.'}
+              : 'No aura ability active.'}
           </div>
         )}
       </div>
@@ -677,7 +737,7 @@ const AuraStatsBox = ({ morphStability, vigor, hunger, activeMorph, activeAbilit
   }}>
     {[
       { label: 'VIGOR',           value: vigor,          color: '#2a7a5a'    },
-      { label: 'MORPH STABILITY', value: morphStability, color: stabilityColor },
+      { label: 'AURA STABILITY', value: auraStability, color: stabilityColor },
       { label: 'HUNGER',          value: hunger ?? 100,  color: hungerColor  },
     ].map(({ label, value, color }) => (
       <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
@@ -734,7 +794,7 @@ export const HUD = ({
   onReset,
   onDebug,
 }) => {
-  const { pendingGive, nearbyNPC, nearbyEntity, morphStability = 100, vigor = 100, hunger = 100, activeMorph = null, activeAbility = 'NONE', currentRoom } = gameState;
+  const { pendingGive, nearbyNPC, nearbyEntity, auraStability = 100, vigor = 100, hunger = 100, activeAura = null, activeAbility = 'NONE', currentRoom } = gameState;
 
   const zoom = useTextScale();
   const { connected: gamepadConnected, cursorActive } = useGamepadConnected();
@@ -744,6 +804,16 @@ export const HUD = ({
   const [positions,  setPositions]  = useState({});
   const zCounter = useRef(9101);
   const [zMap,    setZMap]          = useState({});
+
+  // Gamepad keyboard bridge — active whenever any panel is open
+  // (must be after openPanels declaration)
+  const anyPanelOpen = openPanels.size > 0;
+  useGamepadKeyboard(anyPanelOpen);
+
+  // Notify Character's cursor system when HUD panels open/close
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(anyPanelOpen ? 'gp-ui-opened' : 'gp-ui-closed'));
+  }, [anyPanelOpen]);
 
   // Button refs — used to place each panel above its own button
   const menuBtnRef    = useRef(null);
@@ -755,7 +825,7 @@ export const HUD = ({
   // Panels open with their bottom flush against the top of the HUD bar.
   const PANEL_META = {
     menu:    { w: 200, h: 260 },
-    journal: { w: 700, h: 640 },
+    journal: { w: 860, h: 640 },
     satchel: { w: 295, h: 430 },
     status:  { w: 860, h: 660 },
   };
@@ -934,8 +1004,8 @@ export const HUD = ({
           JOURNAL
         </button>
 
-        {/* STATS BOX — vigor + morphStability with aura alert popover (hover, unchanged) */}
-        <AuraStatsBox morphStability={morphStability} vigor={vigor} hunger={hunger} activeMorph={activeMorph} activeAbility={activeAbility} currentRoom={currentRoom} />
+        {/* STATS BOX — vigor + auraStability with aura alert popover (hover, unchanged) */}
+        <AuraStatsBox auraStability={auraStability} vigor={vigor} hunger={hunger} activeAura={activeAura} activeAbility={activeAbility} currentRoom={currentRoom} />
 
         {/* SATCHEL — click to open */}
         <button

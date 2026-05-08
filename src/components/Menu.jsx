@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { clearSave } from '../utils/persistence';
 
 const BG         = '#d6cab0';
@@ -67,13 +67,13 @@ export const Menu = ({ gameState, setGameState, onClose }) => {
   const handleReset = () => {
     clearSave();
     setGameState({
-      morphStability: 100, vigor: 100, money: 0.25,
+      auraStability: 100, vigor: 100, money: 0.25,
       inventory: [], flags: {}, memories: [], containers: {},
       pendingGive: null, npcSuspicion: {}, currentRoom: 'test_house',
       activeForm: 'SOCIAL_CRYPSIS', observedNPCs: {}, activeAbility: 'NONE',
       nearbyNPC: null, nearbyEntity: null, isMayaHidden: false,
-      currentTerrain: null, activeMorph: null, unlockedMorphs: [],
-      morphKnowledge: {}, npcRelationships: {}, mayaMood: 50,
+      currentTerrain: null, activeAura: null, knownAuras: [],
+      auraKnowledge: {}, npcRelationships: {}, mayaMood: 50,
       seenFacets: ['genetic_memory', 'nerve_sense', 'social_crypsis', 'mimicry'],
       knowledge: {},
     });
@@ -81,10 +81,10 @@ export const Menu = ({ gameState, setGameState, onClose }) => {
     onClose();
   };
 
-  const unlockedMorphs   = gameState.unlockedMorphs  || [];
-  const morphKnowledge   = gameState.morphKnowledge   || {};
-  const activeMorphData  = unlockedMorphs.find(m => m.id === gameState.activeMorph);
-  const inProgressMorphs = Object.entries(morphKnowledge).filter(([, p]) => p < 100);
+  const knownAuras   = gameState.knownAuras  || [];
+  const auraKnowledge   = gameState.auraKnowledge   || {};
+  const activeAuraData  = knownAuras.find(m => m.id === gameState.activeAura);
+  const inProgressAuras = Object.entries(auraKnowledge).filter(([, p]) => p < 100);
   const suspicion        = gameState.npcSuspicion || {};
   const standing         = getSocialStanding(gameState);
 
@@ -144,18 +144,18 @@ export const Menu = ({ gameState, setGameState, onClose }) => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {unlockedMorphs.length === 0 && inProgressMorphs.length === 0 && (
+            {knownAuras.length === 0 && inProgressAuras.length === 0 && (
               <div style={{ color: TEXT_DIM, fontFamily: FONT_SER, fontStyle: 'italic', fontSize: 13, paddingTop: 8, lineHeight: 1.6 }}>
-                No morphs acquired. Observe NPCs closely to begin mapping their social frequency.
+                No auras acquired. Observe NPCs closely to begin mapping their social frequency.
               </div>
             )}
 
-            {unlockedMorphs.map(morph => {
-              const active = gameState.activeMorph === morph.id;
+            {knownAuras.map(morph => {
+              const active = gameState.activeAura === morph.id;
               return (
                 <button
                   key={morph.id}
-                  onClick={() => setGameState(p => ({ ...p, activeMorph: morph.id }))}
+                  onClick={() => setGameState(p => ({ ...p, activeAura: morph.id }))}
                   style={{
                     padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
                     background: active ? `${ACCENT}18` : BG_DARK,
@@ -173,7 +173,7 @@ export const Menu = ({ gameState, setGameState, onClose }) => {
               );
             })}
 
-            {inProgressMorphs.map(([id, prog]) => (
+            {inProgressAuras.map(([id, prog]) => (
               <div key={id} style={{
                 padding: '10px 14px',
                 background: BG_DARK,
@@ -227,7 +227,7 @@ export const Menu = ({ gameState, setGameState, onClose }) => {
               {[
                 { label: 'Position',  value: 'Domestic Servant'        },
                 { label: 'Form',      value: gameState.activeForm?.replace(/_/g, ' ') || 'Social Crypsis' },
-                { label: 'Morph',     value: activeMorphData?.name || 'None' },
+                { label: 'Morph',     value: activeAuraData?.name || 'None' },
               ].map(({ label, value }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontFamily: FONT, fontSize: 9, color: TEXT_DIM, letterSpacing: '1px', textTransform: 'uppercase' }}>

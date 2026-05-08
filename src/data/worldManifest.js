@@ -1,16 +1,39 @@
+﻿// ── Chapter registry ───────────────────────────────────────────────────────────
+// Each chapter defines its number, title, and the unlock state.
+// chapter: 0 = developer sandbox (always accessible, not shown to players)
+// chapter: 1 = Gold Coast / Barracoons (free demo — always unlocked)
+// chapter: 2 = The Slave Ship / Middle Passage (requires purchase)
+// chapter: 3 = The American Island (requires purchase)
+export const CHAPTER_REGISTRY = {
+  0: { title: 'Developer Sandbox',          free: true,  description: 'Internal testing rooms. Not part of the game.' },
+  1: { title: 'The Gold Coast — Barracoons', free: true,  description: 'The last sight of home. The holding pens of the Gold Coast before the crossing.' },
+  2: { title: 'The Slave Ship',             free: false, description: 'The Middle Passage. Below deck, across the Atlantic.' },
+  3: { title: 'The American Island',        free: false, description: 'A fictional island that holds the full weight of American history in one place.' },
+};
+
 export const WORLD_MANIFEST = {
   "test_house": {
     id: "test_house",
-    path: "/textures/test_house",
-    exitTo: "test_house", // Loop for Alpha testing
+    chapter: 0,    // DEV ONLY — not part of any chapter
+    path: "/textures/Whitney Plantation/test_house",
+    spawnPos:       { x: 1139, y: 652 },
+    exits: {
+      "0,0,255": { to: "overseers_house_exterior" },
+      // "05fff3":  { to: "room_id", label: "Door Name" },
+      // "e500ff":  { to: "room_id", label: "Door Name" },
+      // "ff0004":  { to: "room_id", label: "Door Name" },
+      // "ff8400":  { to: "room_id", label: "Door Name" },
+      // "39b54a":  { to: "room_id", label: "Door Name" },
+    },
+    characterScale: 0.85,
 
-    // 1. STATIC ENTITIES — proximity-based detection (x, y, radius in world units)
+    // 1. STATIC ENTITIES â€” proximity-based detection (x, y, radius in world units)
     //
     // Workflow:
-    //   1. Enable debug mode — walk Maya next to the object
+    //   1. Enable debug mode â€” walk Maya next to the object
     //   2. Read the XY coords from the crosshair/telemetry bar
-    //   3. Set x,y to the object's centre, radius to taste (40–70 is typical)
-    //   4. No mask painting needed — mask_entities.png is no longer used
+    //   3. Set x,y to the object's centre, radius to taste (40â€“70 is typical)
+    //   4. No mask painting needed â€” mask_entities.png is no longer used
     //
     // Maya triggers [E] when Math.hypot(maya.x - ent.x, maya.y - ent.y) < radius
     entities: {
@@ -74,7 +97,7 @@ export const WORLD_MANIFEST = {
       hearth: {
         id: "hearth", name: "Hearth", type: "COOKING",
         x: 300, y: 570, radius: 70,
-        // NOTE: calibrate x/y in debug mode — walk Maya to the hearth and read coords
+        // NOTE: calibrate x/y in debug mode â€” walk Maya to the hearth and read coords
       },
       rubbage: {
         id: "rubbage", name: "Rubbage", type: "CONTAINER",
@@ -96,7 +119,7 @@ export const WORLD_MANIFEST = {
       "255,255,255": { id: "under_bed", name: "Under the Bed", type: "HIDE" }
     },
 
-    // 3. THE INHABITANTS (mask_npcs.png disabled — manifest coordinates are authoritative)
+    // 3. THE INHABITANTS (mask_npcs.png disabled â€” manifest coordinates are authoritative)
     npcs: {
       "0,255,0": {
         id: "silas",
@@ -172,16 +195,66 @@ export const WORLD_MANIFEST = {
 
     // 5. DEPTH OVERLAYS
     //
-    // yDepth — the world-space Y of the object's front edge.
+    // yDepth â€” the world-space Y of the object's front edge.
     //   Maya's zIndex = Math.floor(pos.y). If yDepth > Maya's y, overlay renders in front.
     //   Use the debug crosshair to find the front edge Y of each piece of furniture.
     //
-    // hidingOverlay:true — this overlay jumps to zIndex 9500 when isMayaHidden is true,
+    // hidingOverlay:true â€” this overlay jumps to zIndex 9500 when isMayaHidden is true,
     //   covering Maya completely so she appears to be under the furniture.
     overlays: [
       { id: "table_overlay",       filename: "table_overlay.png",       yDepth: 560, hidingOverlay: true  },
       { id: "bed_overlay",         filename: "bed_overlay.png",         yDepth: 420, hidingOverlay: true  },
       { id: "small_table_overlay", filename: "small_table_overlay.png", yDepth: 650, hidingOverlay: true },
     ]
+  },
+
+  "overseers_house_exterior": {
+    id:        "overseers_house_exterior",
+    chapter:   0,    // DEV ONLY — not part of any chapter
+    path:      "/textures/Whitney Plantation/overseers_house_exterior",
+    baseImage: "base.png",
+    worldW:         2000,
+    worldH:         900,
+    spawnPos:       { x: 1322, y: 560 },
+    characterScale: 0.5,   // Maya appears at 50% her normal size in this room
+    moveScale:      0.4,   // 60% slower movement in this room
+    exits: {
+      "0,0,255": { to: "test_house" },
+      // Uncomment each line once the door is painted + the target room exists:
+      // "05fff3":  { to: "room_id", label: "Door Name" },
+      // "e500ff":  { to: "room_id", label: "Door Name" },
+      // "ff0004":  { to: "room_id", label: "Door Name" },
+      // "ff8400":  { to: "room_id", label: "Door Name" },
+      // "39b54a":  { to: "room_id", label: "Door Name" },
+    },
+
+    // No mask_terrain.png yet â€” useNavigation handles missing terrain gracefully.
+    // Paint mask_terrain.png when surface types (grass, stone path, etc.) are needed.
+
+    entities:    {},
+    hidingSpots: {},
+    npcs:        {},
+
+    terrainSurfaces: {
+      "0,0,0":       { id: "obstacle", label: "Obstacle", footstep: null    },
+      "255,255,255": { id: "ground",   label: "Ground",   footstep: "stone" },
+    },
+
+    // yDepth: 9999 ensures this overlay always renders in front of Maya
+    overlays: [
+      { id: "lower_roofing_overseers_house", filename: "lower_roofing_overseers_house.png", yDepth: 9999 },
+      { id: "fence_rail",             filename: "fence rail.png",             yDepth: 620 },
+      { id: "overseers_support03",    filename: "overseers_support03.png",    yDepth: 618 },
+      { id: "overseers_support04",    filename: "overseers_support04.png",    yDepth: 679 },
+      { id: "overseers_support02",    filename: "overseers_support02.png",    yDepth: 519 },
+      { id: "small_tree_lower_right", filename: "small_tree_lower_right.png", yDepth: 770 },
+      { id: "overseers_support01",    filename: "overseers_support01.png",    yDepth: 510 },
+      { id: "tree_in_front_of_fence", filename: "tree_in_front_of_fence.png", yDepth: 533 },
+      { id: "fence_front_section",    filename: "fence_front_section.png",    yDepth: 509 },
+      { id: "tree_behind_fence",      filename: "tree_behind_fence.png",      yDepth: 487 },
+      { id: "street_pole",            filename: "street_pole.png",            yDepth: 413 },
+      { id: "upper_tree_a",           filename: "upper_tree_a.png",           yDepth: 234 },
+      { id: "upper_tree_b",           filename: "upper_tree_b.png",           yDepth: 82  },
+    ],
   }
 };

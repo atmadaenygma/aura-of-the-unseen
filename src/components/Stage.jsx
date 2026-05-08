@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+﻿import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigation } from '../hooks/useNavigation';
 import { readNPCSpawns } from '../utils/readNPCSpawns';
 import { Character } from './Character';
@@ -8,12 +8,25 @@ import { DialogueSystem } from './DialogueSystem';
 import { LootUI } from './LootUI';
 import { CookingUI } from './CookingUI';
 import { NPC_TO_REGISTRY } from '../data/cognitions';
+import { WORLD_MANIFEST } from '../data/worldManifest';
+import { ChapterGateUI } from './ChapterGateUI';
 import { music as audioMusic } from '../utils/audio';
 
 /**
  * AURA OF THE UNSEEN: MASTER STAGE ENGINE v4.5
  * Features: Sensory Telemetry, Proximity Hitboxes, Quad-Mask Logic.
  */
+// Background and overlay images fill the world canvas at native aspect ratio.
+// worldW/worldH in the manifest control the canvas size — images cover it with no squash.
+const scaleStyle = (scale = 1, zIndex = 0) => ({
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  zIndex,
+});
+
 export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode }) => {
   const ZOOM = 1.6;
 
@@ -22,6 +35,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   const [activeDialogue, setActiveDialogue] = useState(null);
   const [activeLoot,     setActiveLoot]     = useState(null);
   const [activeCooking,  setActiveCooking]  = useState(null);
+  const [chapterGate,    setChapterGate]    = useState(null); // chapter number blocking entry
 
   // Play level music when the stage mounts, stop on unmount
   useEffect(() => {
@@ -88,7 +102,9 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   // 1. SENSORY HOOK (Dual-Mask: logic + terrain)
   const { checkPixel, isReady } = useNavigation(
     `${manifest.path}/mask_logic.png`,
-    `${manifest.path}/mask_terrain.png`
+    `${manifest.path}/mask_terrain.png`,
+    manifest.imageScale,
+    manifest.noCollision
   );
 
   // Stable collision function passed to Character.
@@ -96,8 +112,8 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   // Without this, an anonymous (x,y) => ... lambda would be a new reference every
   // Stage render, causing Character's checkCollisionRef update and potential loop churn.
   const checkCollision = useCallback(
-    (x, y) => checkPixel(x, y, 1280, 800),
-    [checkPixel]
+    (x, y) => checkPixel(x, y, manifest.worldW ?? 1280, manifest.worldH ?? 800),
+    [checkPixel, manifest.worldW, manifest.worldH]
   );
 
   // 2. DETECTION LOGIC — called 60fps from Character's rAF loop via onNearbyEntityRef.
@@ -149,7 +165,13 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
     } else if (closestEntity) {
       found = { ...closestEntity, logicType: 'ARTIFACT' };
     } else if (navData.type === 'EXIT') {
-      found = { id: 'exit', name: 'Leave', logicType: 'EXIT' };
+      const exitDef = manifest.exits?.[navData.exitKey];
+      found = {
+        id:       `exit_${navData.exitKey ?? 'default'}`,
+        name:     exitDef?.label ?? 'Enter',
+        logicType: 'EXIT',
+        exitKey:  navData.exitKey,
+      };
     }
 
     const newId  = found?.id ?? null;
@@ -210,7 +232,21 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
 
     if (key === 'E') {
       if (entity.logicType === 'EXIT') {
-        setGameState(prev => ({ ...prev, currentRoom: manifest.exitTo }));
+        const exitDef    = manifest.exits?.[entity.exitKey];
+        const dest       = exitDef?.to ?? manifest.exitTo;
+        if (!dest) return;
+
+        // Chapter gate — block entry to locked chapters
+        const destChapter        = WORLD_MANIFEST[dest]?.chapter ?? 1;
+        const unlockedChapters   = gameStateRef.current.unlockedChapters ?? [1];
+        const devRoom            = destChapter === 0;  // dev rooms always accessible
+
+        if (!devRoom && !unlockedChapters.includes(destChapter)) {
+          setChapterGate(destChapter);
+          return;
+        }
+
+        setGameState(prev => ({ ...prev, currentRoom: dest }));
         return;
       }
 
@@ -286,7 +322,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
                 ts:      Date.now(),
               }],
             };
-            if (auraFails) next.morphStability = Math.max(0, p.morphStability - 25);
+            if (auraFails) next.auraStability = Math.max(0, p.auraStability - 25);
             if (takesItem && giftEffect) {
               if (giftEffect.trust) {
                 next.npcRelationships = {
@@ -317,7 +353,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           const inv       = gameStateRef.current.inventory || [];
           const stolen    = inv.filter(it => it && it.__ref === undefined && it.origin === 'stolen');
           if (stolen.length > 0) {
-            const stability = gameStateRef.current.morphStability ?? 100;
+            const stability = gameStateRef.current.auraStability ?? 100;
             const risk = stability < 25 ? 0.80
                        : stability < 50 ? 0.55
                        : stability < 75 ? 0.25
@@ -366,7 +402,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           setGameState(p => ({
             ...p,
             memories:  [...(p.memories || []), { title: entity.name, content: entity.text }],
-            morphStability: Math.max(0, p.morphStability + (entity.impact || 0)),
+            auraStability: Math.max(0, p.auraStability + (entity.impact || 0)),
           }));
         }
       }
@@ -386,7 +422,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
 
       <div
         id="world-container"
-        style={{ position: 'absolute', width: 1280 * ZOOM, height: 800 * ZOOM, willChange: 'transform' }}
+        style={{ position: 'absolute', width: (manifest.worldW ?? 1280) * ZOOM, height: (manifest.worldH ?? 800) * ZOOM, willChange: 'transform' }}
       >
         <DebugOverlay
           pos={playerCoords}
@@ -397,8 +433,8 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
         />
 
         <img
-          src={`${manifest.path}/base.jpg`}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0 }}
+          src={`${manifest.path}/${manifest.baseImage ?? 'base.jpg'}`}
+          style={scaleStyle(manifest.imageScale, 0)}
           alt=""
         />
 
@@ -407,14 +443,19 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           <NPC
             key={npc.id}
             {...npc}
+            scale={(npc.scale ?? 1) * (manifest.characterScale ?? 1)}
             zoom={ZOOM}
             activeBark={activeBark.id === npc.id ? activeBark.text : null}
           />
         ))}
 
         <Character
-          initialPos={{ x: 640, y: 680 }}
+          initialPos={manifest.spawnPos ?? { x: 640, y: 680 }}
           zoom={ZOOM}
+          worldW={manifest.worldW ?? 1280}
+          worldH={manifest.worldH ?? 800}
+          characterScale={manifest.characterScale ?? 1}
+          moveScale={manifest.moveScale ?? 1}
           gameState={gameState}
           setGameState={setGameState}
           checkCollision={checkCollision}
@@ -434,7 +475,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
             <img
               key={ov.id}
               src={`${manifest.path}/${ov.filename}`}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex, pointerEvents: 'none' }}
+              style={{ ...scaleStyle(manifest.imageScale, zIndex), pointerEvents: 'none' }}
               alt=""
             />
           );
@@ -448,6 +489,13 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           gameState={gameState}
           setGameState={setGameState}
           onClose={() => setActiveLoot(null)}
+        />
+      )}
+
+      {chapterGate && (
+        <ChapterGateUI
+          chapterNumber={chapterGate}
+          onBack={() => setChapterGate(null)}
         />
       )}
 

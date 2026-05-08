@@ -100,7 +100,8 @@ export const LoadingScreen = ({ onContinue }) => {
   // Gamepad: A button polling
   useEffect(() => {
     let frame;
-    const prevA = { pressed: false };
+    // Initialise as true so a held-down A from the menu doesn't fire immediately
+    const prevA = { pressed: true };
     const poll  = () => {
       const pads = navigator.getGamepads?.() ?? [];
       for (let i = 0; i < pads.length; i++) {

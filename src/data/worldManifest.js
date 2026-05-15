@@ -278,11 +278,11 @@ export const WORLD_MANIFEST = {
     chapter:   0,    // DEV ONLY — not part of any chapter
     path:      "/textures/Whitney Plantation/silas_cabin",
     baseImage: "silas_cabin.png",
-    worldW:         1536,   // 1920 × 0.8 (20% smaller)
-    worldH:         864,    // 1080 × 0.8
-    spawnPos:       { x: 768, y: 432 },  // 960/540 × 0.8 — centered for environment visibility
-    characterScale: 1.04,   // 1.3 × 0.8 (Maya 4% bigger than normal)
-    moveScale:      0.8,    // 1 × 0.8 (80% normal movement speed)
+    worldW:         1632,   // 1920 × 0.85 (15% smaller)
+    worldH:         918,    // 1080 × 0.85
+    spawnPos:       { x: 816, y: 459 },  // 960/540 × 0.85 — centered for environment visibility
+    characterScale: 1.1,    // 1.3 × 0.85 (Maya 10% bigger than normal)
+    moveScale:      0.85,   // 1 × 0.85 (85% normal movement speed)
     exits: {
       "e500ff": { to: "overseers_house_exterior", label: "Outside", spawnX: 895, spawnY: 344 },
     },
@@ -294,9 +294,9 @@ export const WORLD_MANIFEST = {
         id: 'old_silas',
         name: 'Old Silas',
         assetPath: '/sprites/npcs/silas_idle.webm',
-        scale: 1.04,
-        spawnX: 930,    // 1163 × 0.8
-        spawnY: 448,    // 560 × 0.8
+        scale: 1.1,
+        spawnX: 989,    // 1163 × 0.85
+        spawnY: 476,    // 560 × 0.85
         role: 'ally',
         barks: [],
         dialogueKey: 'silas_intro',
@@ -328,10 +328,10 @@ export const WORLD_MANIFEST = {
     },
 
     overlays: [
-      { id: "bed_01",                 filename: "overlay_bed_01.png",                 yDepth: 522 },   // 653 × 0.8
-      { id: "bed_02",                 filename: "overlay_bed_02.png",                 yDepth: 706 },   // 883 × 0.8
-      { id: "bed_bottom_left",        filename: "overlay_bed_bottom_left.png",        yDepth: 842 },   // 1053 × 0.8
-      { id: "bed_tip_near_door",      filename: "overlay_bed_tip_near_door.png",      yDepth: 550 },   // 688 × 0.8
+      { id: "bed_01",                 filename: "overlay_bed_01.png",                 yDepth: 555 },   // 653 × 0.85
+      { id: "bed_02",                 filename: "overlay_bed_02.png",                 yDepth: 751 },   // 883 × 0.85
+      { id: "bed_bottom_left",        filename: "overlay_bed_bottom_left.png",        yDepth: 895 },   // 1053 × 0.85
+      { id: "bed_tip_near_door",      filename: "overlay_bed_tip_near_door.png",      yDepth: 585 },   // 688 × 0.85
     ],
   }
 };

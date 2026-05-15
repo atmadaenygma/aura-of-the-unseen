@@ -1,0 +1,14 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]: BLACKTRACK
+    - generic [ref=e6]:
+      - button "CONTINUE" [ref=e7] [cursor=pointer]
+      - button "LOAD" [ref=e8] [cursor=pointer]
+      - button "NEW GAME" [ref=e9] [cursor=pointer]
+      - button "OPTIONS" [ref=e10] [cursor=pointer]
+      - button "SPECIAL" [ref=e11] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic:
+        - generic: A game by DavidYBlue
+        - generic: The individual stories within this game are rooted in documented truth. The transatlantic slave trade and American slavery represent one of history's gravest injustices — a wound whose consequences reach into the present day. Some names, places, and circumstances have been shaped for narrative. The human truth beneath them has not.

@@ -1,12 +1,15 @@
 ﻿import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigation } from '../hooks/useNavigation';
+import { useNPCAI } from '../hooks/useNPCAI';
 import { readNPCSpawns } from '../utils/readNPCSpawns';
+import { readSpawnFromMask } from '../utils/readSpawnFromMask';
 import { Character } from './Character';
 import { NPC } from './NPC';
 import { DebugOverlay } from './DebugOverlay';
 import { DialogueSystem } from './DialogueSystem';
 import { LootUI } from './LootUI';
 import { CookingUI } from './CookingUI';
+import { LoadingScreen } from './LoadingScreen';
 import { NPC_TO_REGISTRY } from '../data/cognitions';
 import { WORLD_MANIFEST } from '../data/worldManifest';
 import { ChapterGateUI } from './ChapterGateUI';
@@ -36,12 +39,26 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   const [activeLoot,     setActiveLoot]     = useState(null);
   const [activeCooking,  setActiveCooking]  = useState(null);
   const [chapterGate,    setChapterGate]    = useState(null); // chapter number blocking entry
+  const [showLoading,    setShowLoading]    = useState(false);
 
   // Play level music when the stage mounts, stop on unmount
   useEffect(() => {
     audioMusic.play('chain_link_amen');
     return () => audioMusic.stop();
   }, []);
+
+  // Show loading screen when room transitions begin
+  useEffect(() => {
+    setShowLoading(true);
+  }, [locationID]);
+
+  // Clear nextRoomSpawn after using it
+  useEffect(() => {
+    if (gameState.nextRoomSpawn) {
+      setGameState(prev => ({ ...prev, nextRoomSpawn: null }));
+    }
+  }, [locationID]);
+
   const [activeBark,     setActiveBark]     = useState({ id: null, text: '' });
   const [nearbyEntity,   setNearbyEntity]   = useState(null);
   const [playerCoords,   setPlayerCoords]   = useState({ x: 640, y: 680, dir: 'DOWN' });
@@ -107,6 +124,48 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
     manifest.noCollision
   );
 
+  // 1b. NPC AI SYSTEM
+  const { tickNPCs, npcStates, npcPositions, updateNPCPositions } = useNPCAI(
+    resolvedNPCs,
+    checkPixel,
+    isReady,
+    manifest.worldW ?? 1280,
+    manifest.worldH ?? 800
+  );
+
+  // Hide loading screen once assets are loaded
+  useEffect(() => {
+    if (isReady && showLoading) {
+      setShowLoading(false);
+    }
+  }, [isReady, showLoading]);
+
+  // Handle NPC state transitions (ALERTED, CATCHING, FLEEING)
+  useEffect(() => {
+    Object.entries(npcStates).forEach(([npcId, npcState]) => {
+      const npc = resolvedNPCs[npcId];
+      if (!npc) return;
+
+      if (npcState.state === 'ALERTED') {
+        // Fire an aggressive bark from the NPC's bark list
+        const barks = npc.barks || [];
+        if (barks.length > 0) {
+          const randomBark = barks[Math.floor(Math.random() * barks.length)];
+          setActiveBark({ id: npcId, text: randomBark });
+        }
+      } else if (npcState.state === 'CATCHING') {
+        // Clear bark and trigger the catch dialogue
+        setActiveBark({ id: null, text: '' });
+        if (npc.catchDialogue) {
+          setActiveDialogue(npc.catchDialogue);
+        }
+      } else if (npcState.state === 'FLEEING') {
+        // Clear any bark when fleeing
+        setActiveBark({ id: null, text: '' });
+      }
+    });
+  }, [npcStates, resolvedNPCs]);
+
   // Stable collision function passed to Character.
   // useCallback([checkPixel]) means this stabilizes after masks load (isReady → true).
   // Without this, an anonymous (x,y) => ... lambda would be a new reference every
@@ -114,6 +173,21 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
   const checkCollision = useCallback(
     (x, y) => checkPixel(x, y, manifest.worldW ?? 1280, manifest.worldH ?? 800),
     [checkPixel, manifest.worldW, manifest.worldH]
+  );
+
+  // NPC collision check — prevents Maya from walking through NPCs
+  const checkNPCCollision = useCallback(
+    (x, y) => {
+      const NPC_RADIUS = 35; // pixels
+      return Object.values(resolvedNPCs).some(npc => {
+        const npcPos = npcPositions[npc.id] || { x: npc.spawnX, y: npc.spawnY };
+        const dx = x - npcPos.x;
+        const dy = y - npcPos.y;
+        const distance = Math.hypot(dx, dy);
+        return distance < NPC_RADIUS;
+      });
+    },
+    [resolvedNPCs, npcPositions]
   );
 
   // 2. DETECTION LOGIC — called 60fps from Character's rAF loop via onNearbyEntityRef.
@@ -219,7 +293,11 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
         setGameState(p => ({ ...p, currentTerrain: surface }));
       }
     }
-  }, [manifest, resolvedNPCs, debugMode, setGameState]);
+
+    // 6. NPC AI TICK (60fps)
+    tickNPCs(currentPos, isCrouching, gameState);
+    updateNPCPositions();
+  }, [manifest, resolvedNPCs, debugMode, setGameState, tickNPCs, updateNPCPositions, gameState]);
 
   // 3. THE ACTION ACTUATOR — [E] Talk/Search, [C] Hide
   // Both nearbyEntity and pendingGive are read from refs, NOT from the closure.
@@ -246,7 +324,29 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           return;
         }
 
-        setGameState(prev => ({ ...prev, currentRoom: dest }));
+        // Read spawn position from destination room's mask using the exit color
+        const destManifest = WORLD_MANIFEST[dest];
+
+        // Check if exit definition has explicit spawn coordinates
+        if (exitDef?.spawnX !== undefined && exitDef?.spawnY !== undefined) {
+          setGameState(prev => ({
+            ...prev,
+            currentRoom: dest,
+            nextRoomSpawn: { x: exitDef.spawnX, y: exitDef.spawnY },
+          }));
+        } else {
+          // Otherwise read from mask
+          readSpawnFromMask(
+            `${destManifest.path}/mask_logic.png`,
+            entity.exitKey
+          ).then((spawnPos) => {
+            setGameState(prev => ({
+              ...prev,
+              currentRoom: dest,
+              nextRoomSpawn: spawnPos || destManifest.spawnPos, // fallback to default spawn
+            }));
+          });
+        }
         return;
       }
 
@@ -411,11 +511,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
     // [C] now only toggles crouch in Character — hiding is automatic on HIDE_ZONE entry
   }, [setGameState, manifest]);
 
-  if (!isReady) return (
-    <div style={{ color: '#d4af37', padding: '100px', fontFamily: 'serif', letterSpacing: '4px' }}>
-      ESTABLISHING NEUROMIMETIC LINK...
-    </div>
-  );
+  if (showLoading) return <LoadingScreen onContinue={() => setShowLoading(false)} />;
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
@@ -439,18 +535,23 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
         />
 
         {/* NPCs — positions resolved from mask_npcs.png, falling back to manifest coords */}
-        {Object.values(resolvedNPCs).map(npc => (
-          <NPC
-            key={npc.id}
-            {...npc}
-            scale={(npc.scale ?? 1) * (manifest.characterScale ?? 1)}
-            zoom={ZOOM}
-            activeBark={activeBark.id === npc.id ? activeBark.text : null}
-          />
-        ))}
+        {Object.values(resolvedNPCs).map(npc => {
+          const pos = npcPositions[npc.id] || { x: npc.spawnX, y: npc.spawnY };
+          return (
+            <NPC
+              key={npc.id}
+              {...npc}
+              spawnX={pos.x}
+              spawnY={pos.y}
+              scale={(npc.scale ?? 1) * (manifest.characterScale ?? 1)}
+              zoom={ZOOM}
+              activeBark={activeBark.id === npc.id ? activeBark.text : null}
+            />
+          );
+        })}
 
         <Character
-          initialPos={manifest.spawnPos ?? { x: 640, y: 680 }}
+          initialPos={gameState.nextRoomSpawn ?? manifest.spawnPos ?? { x: 640, y: 680 }}
           zoom={ZOOM}
           worldW={manifest.worldW ?? 1280}
           worldH={manifest.worldH ?? 800}
@@ -459,6 +560,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           gameState={gameState}
           setGameState={setGameState}
           checkCollision={checkCollision}
+          checkNPCCollision={checkNPCCollision}
           onNearbyEntity={handleEntityDetection}
           onInteract={triggerInteraction}
           activeUI={activeArtifact || activeDialogue || activeLoot || activeCooking}

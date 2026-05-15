@@ -62,6 +62,14 @@ export const music = {
     currentAudio   = audio;
     currentTrack   = trackId;
 
+    // Fallback loop in case native loop fails
+    audio.addEventListener('ended', () => {
+      if (currentAudio === audio && currentTrack === trackId) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      }
+    }, false);
+
     audio.play().catch(e => console.warn('[audio] Music play blocked:', e));
 
     // Fade in

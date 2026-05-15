@@ -349,6 +349,30 @@ export const PEOPLE_REGISTRY = {
     ],
   },
 
+  angus: {
+    id: 'angus',
+    name: 'ANGUS',
+    image: '/ui/portraits/angus_portrait.png',
+    video: null,
+    tiers: [
+      {
+        level: 0,
+        source: 'observation',
+        content:
+          "The Overseer's wife. She moves through the house as though the walls owe her something. " +
+          "Loud, watchful, certain of her authority in every room she enters.",
+      },
+      {
+        level: 1,
+        source: 'observation',
+        lockedHint: "Get closer.",
+        content:
+          "She talks too much — about how special she is, about what her husband will do. " +
+          "Beneath the volume, something else: a woman who needs to be seen, and mistakes fear for respect.",
+      },
+    ],
+  },
+
 };
 
 // ── NPC → REGISTRY bridge ─────────────────────────────────────────────────────
@@ -357,6 +381,7 @@ export const PEOPLE_REGISTRY = {
 export const NPC_TO_REGISTRY = {
   silas:    'silas_pemberton',
   overseer: 'the_overseer',
+  angus:    'angus',
 };
 
 // ── PLACES ────────────────────────────────────────────────────────────────────

@@ -30,7 +30,7 @@ const PORTRAITS = [
   '/ui/portraits/new_maya.webp',
   '/ui/portraits/silas_portrait.png',
   '/ui/portraits/overseer_portrait.png',
-  '/ui/portraits/Angus_portrait.png',
+  '/ui/portraits/angus_portrait.png',
 ];
 
 // ── Palette ────────────────────────────────────────────────────────────────────
@@ -412,12 +412,12 @@ export const MainMenu = ({ saveSlots, onLoadSlot, onNewGame, gameState, setGameS
     audioMusic.play('chain_rattle_hollow');
   }, []);
 
-  // Portrait fade-rotate cycle
+  // Portrait fade-rotate cycle (continuous random)
   useEffect(() => {
     const hold = setTimeout(() => {
       setPortraitVisible(false);
       setTimeout(() => {
-        setPortraitIdx(i => (i + 1) % PORTRAITS.length);
+        setPortraitIdx(i => Math.floor(Math.random() * PORTRAITS.length));
         setPortraitVisible(true);
       }, 900);
     }, 4500);

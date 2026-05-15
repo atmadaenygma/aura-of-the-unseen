@@ -62,6 +62,32 @@ Full list including beige opacity variants and menu overlays: see `src/constants
 
 ---
 
+## Typewriter Text Effect — REQUIRED FEATURE
+
+**ALL dialogue text must use a left-to-right typewriter effect with a visual scan line gradient.**
+
+This is a critical UX feature that makes fast-scrolling dialogue readable and provides natural pacing feedback.
+
+### Requirements
+- Text reveals character-by-character at **60ms per character** (do not speed up)
+- **Scan line animation**: A gradient overlay that moves across the text as it's revealed
+- **Direction**: Scan line ALWAYS moves **left-to-right** regardless of speaker alignment (gradient: `90deg`)
+- **Blinking cursor**: A `|` character appears during typing, disappears when complete
+- **Auto-scroll**: Scrolls only after typewriter completes (no premature scrolling)
+
+### Implementation Location
+File: `src/components/DialogueSystem.jsx` (lines ~358-380)
+- Line 372 (gradient direction) changes based on `currentNode.side`
+- Line 373 (width calculation) drives the scan line animation
+- Line 378 (displayedText) tracks character progression
+
+### Visual Details
+- Gradient color: `rgba(203,120,102,0.3)` (ACCENT colour at 30% opacity)
+- Width transition: `0.03s linear` for smooth movement
+- Cursor: opacity 1 while typing, 0 when complete
+
+---
+
 ## Other Rules
 
 - **Never** rename, delete, or adjust opacity on an existing constant without an explicit user request.

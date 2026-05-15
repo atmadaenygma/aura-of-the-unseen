@@ -9,16 +9,48 @@ export const DIALOGUE_DATA = {
   "silas_intro": {
     speaker: "Old Silas",
     side: "right",
-    text: "Stranger. You move with a heavy gait for someone so light on their feet. The dust on your boots didn't come from Georgia.",
-    introspection: "He is searching your VOC cloud with his instincts. He doesn't see Maya; he sees a ripple in reality.",
+    text: "Girl. What brings you out this way? Not many venture down this road unless they've got somewhere to be or something to find.",
+    introspection: "He looks you over—just another young woman trying to get by. There's nothing about you that strikes him as unusual.",
     options: [
-      { text: "'The road is long, Silas. I am simply tired.'", next: "silas_hub" },
-      { 
-        text: "[Mimicry] (Match the local drawl) 'Just a laborer lookin' for work in the square, Old Man.'", 
-        check: { skill: "Mimicry", difficulty: 8 }, 
-        success: "silas_mimicry_success", 
-        failure: "silas_mimicry_fail" 
+      { text: "(Respectful) 'I'm looking for honest work, sir. Hoping to find my way.'", next: "silas_respectful" },
+      { text: "(Cautious) Lower your gaze and say nothing.", next: "silas_cautious" },
+      { text: "(Curious) 'You seem to see a lot from this place, sir.'", next: "silas_curious" },
+      {
+        text: "[Mimic] (Adopt the local speech) 'Just lookin' for a day's wages, sir. Any work you got?'",
+        check: { skill: "Mimicry", difficulty: 8 },
+        success: "silas_mimicry_success",
+        failure: "silas_mimicry_fail"
       }
+    ]
+  },
+
+  // RESPECTFUL RESPONSE
+  "silas_respectful": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "Mm. At least you've got manners. That's rarer than it used to be. Come—sit a moment. I've questions, and you might have answers.",
+    options: [
+      { text: "Continue", next: "silas_hub" }
+    ]
+  },
+
+  // CAUTIOUS RESPONSE
+  "silas_cautious": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "Wise. A girl who knows when to hold her tongue goes far in this world. I respect that. Come inside—we can talk proper.",
+    options: [
+      { text: "Continue", next: "silas_hub" }
+    ]
+  },
+
+  // CURIOUS RESPONSE
+  "silas_curious": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "Sharp. You see further than most. Yes, I know things. Travelers tell their stories if you listen long enough. Come—let's talk about where you're from.",
+    options: [
+      { text: "Continue", next: "silas_hub" }
     ]
   },
 
@@ -251,8 +283,8 @@ export const DIALOGUE_DATA = {
   "silas_mimicry_fail": {
     speaker: "Old Silas",
     side: "right",
-    text: "Laborer? Your voice has the hollow ring of a bell in an empty church. You're a ghost in a suit, boy. I'm watchin' you.",
-    introspection: "CRITICAL FAILURE: Suspicion is high. Your disguise is losing its grip on his consciousness.",
+    text: "Laborer? Your voice has the hollow ring of a bell in an empty church. Something's not right about you, girl. I'm watchin' you.",
+    introspection: "CRITICAL FAILURE: Suspicion is high. Your accent didn't hold up to scrutiny.",
     impact: -20,
     options: [{ text: "[Try to recover] Wait, Silas...", next: "silas_hub" }]
   },
@@ -311,6 +343,210 @@ export const DIALOGUE_DATA = {
     introspection: "He calls for the others. There is no talking your way out of this.",
     options: [
       { text: "[You are taken.]", next: null, clearStolen: true, impact: -30, flagTrigger: "detained_by_overseer", knowledgeGain: { the_overseer: 4 } },
+    ]
+  },
+
+  "angus_catch": {
+    speaker: "Angus",
+    side: "right",
+    portrait: '/ui/portraits/angus_portrait.png',
+    text: "Well, well. What do we have here? A little shadow in my house.",
+    introspection: "Her eyes are bright. She is pleased to have caught you.",
+    options: [
+      {
+        text: "You think you can hold me?",
+        next: "angus_catch_resist",
+      },
+      {
+        text: "[Say nothing. Try to escape with cunning.]",
+        next: "angus_catch_cunning",
+        check: { skill: "cunning", difficulty: 12 },
+        success: "angus_catch_escape",
+        failure: "angus_catch_fail",
+      },
+    ]
+  },
+
+  "angus_catch_resist": {
+    speaker: "Angus",
+    side: "right",
+    portrait: null,
+    text: "You don't understand what you are, do you? That's what makes you special. That's what he needs. You, moving through the world like you own it. Like you're invisible. But I see you. I always see you.",
+    introspection: "She steps closer. Her grip is certain.",
+    options: [
+      {
+        text: "[Try to escape with cunning.]",
+        next: "angus_catch_cunning",
+        check: { skill: "cunning", difficulty: 12 },
+        success: "angus_catch_escape",
+        failure: "angus_catch_fail",
+      },
+    ]
+  },
+
+  "angus_catch_cunning": {
+    speaker: "Angus",
+    side: "right",
+    portrait: null,
+    text: "My husband talks about women like you. Women who think they're different. But you're not different. You're just... delayed.",
+    introspection: "She's distracted by her own voice. For a moment, her grip loosens.",
+    options: [
+      {
+        text: "[Break free and run.]",
+        next: null,
+        flagTrigger: "escaped_angus",
+        impact: -8,
+      },
+    ]
+  },
+
+  "angus_catch_escape": {
+    speaker: "Angus",
+    side: "right",
+    portrait: null,
+    text: "You! Get back here!",
+    introspection: "You wrench yourself free. Her hands slip. The edge of the room is suddenly close.",
+    options: [
+      {
+        text: "[Run.]",
+        next: null,
+        flagTrigger: "escaped_angus",
+        impact: -5,
+      },
+    ]
+  },
+
+  "angus_catch_fail": {
+    speaker: "Angus",
+    side: "right",
+    portrait: '/ui/portraits/angus_portrait.png',
+    text: "I felt that. Oh, you're clever, but not clever enough. My husband is going to love this.",
+    introspection: "Her grip tightens. You are caught.",
+    options: [
+      {
+        text: "[You are taken.]",
+        next: null,
+        flagTrigger: "detained_by_angus",
+        impact: -25,
+        knowledgeGain: { angus: 3 },
+        resetGame: true,
+      },
+    ]
+  },
+
+  "overseer_catch": {
+    speaker: "The Overseer",
+    side: "right",
+    portrait: '/ui/portraits/overseer_portrait.png',
+    text: "Well, well. Look what we have here. Thought you could sneak around my property, did you?",
+    introspection: "His eyes are cold. There is no mercy in them.",
+    options: [
+      {
+        text: "I wasn't doing anything wrong.",
+        next: "overseer_catch_deny",
+      },
+      {
+        text: "[Try to run past him.]",
+        next: "overseer_catch_run",
+        check: { skill: "athleticism", difficulty: 14 },
+        success: "overseer_catch_escape",
+        failure: "overseer_catch_fail",
+      },
+    ]
+  },
+
+  "overseer_catch_deny": {
+    speaker: "The Overseer",
+    side: "right",
+    portrait: '/ui/portraits/overseer_portrait.png',
+    text: "Wasn't doin' anything wrong? You're trespassin' on my property, and I don't take kindly to liars.",
+    introspection: "He steps closer, blocking the path.",
+    options: [
+      {
+        text: "[Try to run past him.]",
+        next: "overseer_catch_run",
+        check: { skill: "athleticism", difficulty: 14 },
+        success: "overseer_catch_escape",
+        failure: "overseer_catch_fail",
+      },
+    ]
+  },
+
+  "overseer_catch_run": {
+    speaker: "The Overseer",
+    side: "right",
+    portrait: '/ui/portraits/overseer_portrait.png',
+    text: "You think you're faster than me? I've been runnin' these grounds for thirty years.",
+    introspection: "He moves with surprising speed for a man his size.",
+    options: [
+      {
+        text: "[Keep running.]",
+        next: null,
+      },
+    ]
+  },
+
+  "overseer_catch_escape": {
+    speaker: "The Overseer",
+    side: "right",
+    portrait: '/ui/portraits/overseer_portrait.png',
+    text: "Get outta here! And don't let me catch you again!",
+    introspection: "You slip past him. The exit is ahead.",
+    options: [
+      {
+        text: "[Run.]",
+        next: null,
+        flagTrigger: "escaped_overseer",
+        impact: -10,
+      },
+    ]
+  },
+
+  "overseer_catch_fail": {
+    speaker: "The Overseer",
+    side: "right",
+    portrait: '/ui/portraits/overseer_portrait.png',
+    text: "Thought so. You're comin' with me, and you're gonna answer some questions about what you were doin' here.",
+    introspection: "His grip is iron. There is no escape.",
+    options: [
+      {
+        text: "[You are taken.]",
+        next: null,
+        flagTrigger: "detained_by_overseer",
+        impact: -30,
+        knowledgeGain: { the_overseer: 2 },
+        resetGame: true,
+      },
+    ]
+  },
+
+  "silas_cabin_greeting": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "Welcome. Rest here if you need to. This house holds its secrets close, but I keep what's mine. There's something I need... if you're willing to help.",
+    options: [
+      { text: "'What do you need?'", next: "silas_cabin_quest" },
+      { text: "[Leave]", next: null },
+    ]
+  },
+
+  "silas_cabin_quest": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "There's a note... folded, hidden somewhere in the house. It was written long ago. I need to know if it still exists. If you find it, bring it to me.",
+    options: [
+      { text: "'I'll look for it.'", next: null, flagTrigger: "silas_quest_asked", questHint: true },
+      { text: "'I already have it.'", next: "silas_cabin_quest_found", requireItem: "folded_note", takeItem: "folded_note" },
+      { text: "[Leave]", next: null },
+    ]
+  },
+
+  "silas_cabin_quest_found": {
+    speaker: "Old Silas",
+    side: "right",
+    text: "You found it... After all these years. Thank you. This means more than you know.",
+    options: [
+      { text: "[Leave]", next: null, flagTrigger: "silas_note_delivered" },
     ]
   },
 };

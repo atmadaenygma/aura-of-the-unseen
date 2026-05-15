@@ -121,65 +121,40 @@ export const WORLD_MANIFEST = {
 
     // 3. THE INHABITANTS (mask_npcs.png disabled â€” manifest coordinates are authoritative)
     npcs: {
-      "0,255,0": {
-        id: "silas",
-        name: "Old Silas",
-        assetPath: "/sprites/npcs/silas_idle.webm",
-        spawnX: 848,
-        spawnY: 414,
-        dialogueKey: "silas_intro",
-        gives: {
-          folded_note:  { giveDialogue: "silas_note_receive" },
-          tin_comb:     { text: "I have no use for that.",                                      takes: false },
-          dried_flower: { text: "My wife will like this.",                                      takes: true,  giftEffect: { trust: 12, integrity: 5 } },
-          rough_shirt:  { text: "Lord... where'd you come across this? Take care of yourself.", takes: true,  giftEffect: { trust: 18, integrity: 10 } },
-          matches:      { text: "These will last a while. Thank you, child.",                   takes: true,  giftEffect: { trust: 10, integrity: 6  } },
-          defaultBarks: [
-            "I don't need that.",
-            "What's that for?",
-            "That's kind of you, but no.",
-            "I'm alright, child.",
-          ],
-          stolenBarks: [
-            "You didn't have to risk that for me.",
-            "Take care of yourself, child. But I'm grateful.",
-          ],
-          stolenTakes: true,
-          stolenGiftEffect:  { trust: 15, integrity: 8 },
-          defaultGiftEffect: { trust: 5,  integrity: 3 },
-        }
-      },
-      "255,0,0": {
-        id: "overseer",
-        name: "The Overseer",
-        role: "authority",
-        assetPath: "/sprites/npcs/overseer_idle.webm",
-        scale: 1.39,
-        spawnX: 448,
-        spawnY: 456,
+      angus: {
+        id: 'angus',
+        name: 'Angus',
+        assetPath: '/sprites/npcs/angus_forward_left_idle.webm',
+        scale: 2.03,
+        spawnX: 407,
+        spawnY: 433,
+        role: 'authority',
         barks: [
-          "Get to work!",
-          "Don't you have things that need doin'?",
-          "Move along, nigger.",
-          "I'm watchin' you, traveler."
+          'Why are you in my house',
+          'Get you',
+          'You ain\'t supposed to be here',
+          'I\'m gonna call the catchers on you',
+          'You know my husband is the overseer',
+          'Aaaghhhh, a nigger'
         ],
-        gives: {
-          folded_note:  { giveDialogue: "overseer_note_take" },
-          tin_comb:     { text: "Why did you steal that from me? Give it back.", takes: true  },
-          dried_flower: { text: "Stop playing and get back to work.",            takes: false },
-          defaultBarks: [
-            "Why are you playing around?",
-            "What do you want?",
-            "Get back to work.",
-            "Stop pestering me.",
-          ],
-          suspicion: {
-            gainPerGive:  1,
-            threshold:    3,
-            warningBark:  "I'm on to you, girl. Don't test me.",
-            failureBark:  "That's enough. I see exactly what you're doing. Your kind always thinks they're clever.",
-          },
-        }
+
+        // Movement
+        walkRadius: 350,
+        idleChance: 0.75,
+        moveSpeed: 0.7,
+
+        // Sensing
+        sightRange: 220,
+        sightAngle: 75,
+        hearingRange: 130,
+
+        // Aura reactions
+        auraReactions: {
+          rat: { effect: 'flee', fleeRadius: 350 }
+        },
+
+        // Catch dialogue
+        catchDialogue: 'angus_catch'
       }
     },
 
@@ -217,12 +192,11 @@ export const WORLD_MANIFEST = {
     worldH:         900,
     spawnPos:       { x: 1322, y: 560 },
     characterScale: 0.5,   // Maya appears at 50% her normal size in this room
-    moveScale:      0.4,   // 60% slower movement in this room
+    moveScale:      0.44,  // 56% slower movement in this room
     exits: {
       "0,0,255": { to: "test_house" },
-      // Uncomment each line once the door is painted + the target room exists:
+      "e500ff":  { to: "silas_cabin", label: "Silas' Cabin", spawnX: 895, spawnY: 344 },
       // "05fff3":  { to: "room_id", label: "Door Name" },
-      // "e500ff":  { to: "room_id", label: "Door Name" },
       // "ff0004":  { to: "room_id", label: "Door Name" },
       // "ff8400":  { to: "room_id", label: "Door Name" },
       // "39b54a":  { to: "room_id", label: "Door Name" },
@@ -233,7 +207,39 @@ export const WORLD_MANIFEST = {
 
     entities:    {},
     hidingSpots: {},
-    npcs:        {},
+    npcs: {
+      overseer: {
+        id: 'overseer',
+        name: 'The Overseer',
+        assetPath: '/sprites/npcs/overseer_idle.webm',
+        scale: 1.52,
+        spawnX: 968,
+        spawnY: 598,
+        role: 'authority',
+        barks: [
+          'Get back to work!',
+          'Don\'t you have things that need doin\'?',
+          'I\'m watchin\' you, traveler.',
+          'Stop standin\' around.'
+        ],
+
+        // Movement
+        walkRadius: 250,
+        idleChance: 0.8,
+        moveSpeed: 0.6,
+
+        // Sensing
+        sightRange: 300,
+        sightAngle: 90,
+        hearingRange: 160,
+
+        // Aura reactions
+        auraReactions: {},
+
+        // Catch dialogue
+        catchDialogue: 'overseer_catch'
+      }
+    },
 
     terrainSurfaces: {
       "0,0,0":       { id: "obstacle", label: "Obstacle", footstep: null    },
@@ -242,6 +248,15 @@ export const WORLD_MANIFEST = {
 
     // yDepth: 9999 ensures this overlay always renders in front of Maya
     overlays: [
+      { id: "behind_the_slave_quarters_fence", filename: "behind_the_slave_quarters_fence.png", yDepth: 278 },
+      { id: "behind_the_slave_quarters_fence_mid", filename: "behind_the_slave_quarters_fence.png", yDepth: 290 },
+      { id: "behind_the_slave_quarters_fence_far", filename: "behind_the_slave_quarters_fence.png", yDepth: 312 },
+      { id: "left_roofing_overseers_house",  filename: "left_roofing_overseers_house.png",  yDepth: 293 },
+      { id: "left_tree_bottom",              filename: "Left_tree_bottom.png",              yDepth: 597 },
+      { id: "left_tree_bottom_mid",         filename: "Left_tree_bottom.png",              yDepth: 676 },
+      { id: "mid_tree_bottom",               filename: "mid_tree_bottom.png",              yDepth: 817 },
+      { id: "mid_tree_bottom_right",        filename: "mid_tree_bottom.png",              yDepth: 876 },
+      { id: "mid_tree_bottom_far",          filename: "mid_tree_bottom.png",              yDepth: 885 },
       { id: "lower_roofing_overseers_house", filename: "lower_roofing_overseers_house.png", yDepth: 9999 },
       { id: "fence_rail",             filename: "fence rail.png",             yDepth: 620 },
       { id: "overseers_support03",    filename: "overseers_support03.png",    yDepth: 618 },
@@ -255,6 +270,68 @@ export const WORLD_MANIFEST = {
       { id: "street_pole",            filename: "street_pole.png",            yDepth: 413 },
       { id: "upper_tree_a",           filename: "upper_tree_a.png",           yDepth: 234 },
       { id: "upper_tree_b",           filename: "upper_tree_b.png",           yDepth: 82  },
+    ],
+  },
+
+  "silas_cabin": {
+    id:        "silas_cabin",
+    chapter:   0,    // DEV ONLY — not part of any chapter
+    path:      "/textures/Whitney Plantation/silas_cabin",
+    baseImage: "silas_cabin.png",
+    worldW:         1920,
+    worldH:         1080,
+    spawnPos:       { x: 960, y: 540 },  // Centered in room for better environment visibility
+    characterScale: 1.3,  // Maya 30% bigger in this room
+    moveScale:      1,
+    exits: {
+      "e500ff": { to: "overseers_house_exterior", label: "Outside", spawnX: 895, spawnY: 344 },
+    },
+
+    entities:    {},
+    hidingSpots: {},
+    npcs: {
+      old_silas: {
+        id: 'old_silas',
+        name: 'Old Silas',
+        assetPath: '/sprites/npcs/silas_idle.webm',
+        scale: 1.04,
+        spawnX: 1163,
+        spawnY: 560,
+        role: 'ally',
+        barks: [],
+        dialogueKey: 'silas_intro',
+
+        // Movement
+        walkRadius: 100,
+        idleChance: 0.9,
+        moveSpeed: 0.3,
+
+        // Sensing
+        sightRange: 150,
+        sightAngle: 60,
+        hearingRange: 80,
+
+        // Aura reactions
+        auraReactions: {},
+
+        // Catch dialogue
+        catchDialogue: null,
+      }
+    },
+
+    terrainSurfaces: {
+      "0,0,0":       { id: "obstacle",   label: "Obstacle",   footstep: null    },
+      "255,255,255": { id: "wood_floor", label: "Wood Floor", footstep: "wood"  },
+      "255,0,0":     { id: "carpet",     label: "Carpet",     footstep: "soft"  },
+      "0,255,0":     { id: "grass",      label: "Grass",      footstep: "grass" },
+      "0,0,255":     { id: "threshold",  label: "Threshold",  footstep: "stone" },
+    },
+
+    overlays: [
+      { id: "bed_01",                 filename: "overlay_bed_01.png",                 yDepth: 653 },
+      { id: "bed_02",                 filename: "overlay_bed_02.png",                 yDepth: 883 },
+      { id: "bed_bottom_left",        filename: "overlay_bed_bottom_left.png",        yDepth: 1053 },
+      { id: "bed_tip_near_door",      filename: "overlay_bed_tip_near_door.png",      yDepth: 688 },
     ],
   }
 };

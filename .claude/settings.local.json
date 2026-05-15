@@ -4,7 +4,15 @@
       "Bash(python3 -c ' *)",
       "Bash(python -c ' *)",
       "Bash(node -e ' *)",
-      "PowerShell(Get-ChildItem -Path \"k:\\\\00_MyUniverse\\\\AuraOfTheUnseen\\\\aura-of-the-unseen\\\\public\\\\sprites\\\\\" -Recurse | ForEach-Object { if \\($_.PSIsContainer\\) { \"DIR: $\\($_.FullName\\)\" } else { \"FILE: $\\($_.FullName\\)\" } })"
+      "PowerShell(Get-ChildItem -Path \"k:\\\\00_MyUniverse\\\\AuraOfTheUnseen\\\\aura-of-the-unseen\\\\public\\\\sprites\\\\\" -Recurse | ForEach-Object { if \\($_.PSIsContainer\\) { \"DIR: $\\($_.FullName\\)\" } else { \"FILE: $\\($_.FullName\\)\" } })",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_run_code_unsafe",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(timeout 15 bash -c 'until curl -s http://localhost:5173 > /dev/null; do sleep 0.5; done')",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_press_key",
+      "Bash(npm run *)"
     ]
   }
 }

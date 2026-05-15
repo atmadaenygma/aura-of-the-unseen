@@ -63,7 +63,7 @@ const KINETIC_LOCKED_DATA = (dir, isMoving, isKneeling) => {
 export const Character = ({
   initialPos, zoom, worldW = 1280, worldH = 800, characterScale = 1, moveScale = 1,
   gameState, setGameState,
-  checkCollision, onNearbyEntity, onInteract, activeUI
+  checkCollision, checkNPCCollision, onNearbyEntity, onInteract, activeUI
 }) => {
   const pos        = useRef({ ...initialPos });
   const playerRef  = useRef(null);
@@ -119,6 +119,9 @@ export const Character = ({
   useEffect(() => { onNearbyEntityRef.current  = onNearbyEntity; },  [onNearbyEntity]);
   useEffect(() => { onInteractRef.current      = onInteract; },      [onInteract]);
   useEffect(() => { checkCollisionRef.current  = checkCollision; },  [checkCollision]);
+
+  const checkNPCCollisionRef = useRef(null);
+  useEffect(() => { checkNPCCollisionRef.current = checkNPCCollision; }, [checkNPCCollision]);
 
   // --- ANIMATION UPDATER ---
   // Called from the game loop and from the keydown handler.
@@ -463,7 +466,24 @@ export const Character = ({
           const len = Math.sqrt(dx * dx + dy * dy);
           dx /= len; dy /= len;
           const baseSpeed = gpMoving ? 4.4 : 2.2;
-          const speed = (isKneelingRef.current ? 1.1 : (keysPressed.current['shift'] || gpSprintRef.current ? 4.0 : baseSpeed)) * moveScale;
+
+          // Check if Maya is trying to run (shift key or gamepad sprint button)
+          const isSprinting = keysPressed.current['shift'] || gpSprintRef.current;
+          const VIGOR_DRAIN_PER_FRAME = 1;
+          const MIN_VIGOR_TO_RUN = 1;
+
+          // Drain vigor when running and moving
+          if (isSprinting && gameState.vigor > 0) {
+            setGameState(prev => ({
+              ...prev,
+              vigor: Math.max(0, prev.vigor - VIGOR_DRAIN_PER_FRAME)
+            }));
+          }
+
+          // Only allow sprint if vigor is sufficient
+          const canSprint = isSprinting && gameState.vigor > MIN_VIGOR_TO_RUN;
+          const rawSpeed = isKneelingRef.current ? 1.1 : (canSprint ? 4.0 : baseSpeed);
+          const speed = rawSpeed * moveScale;
           const nX = pos.current.x + dx * speed;
           const nY = pos.current.y + dy * speed;
           res = checkCollisionRef.current(nX, nY);
@@ -473,8 +493,9 @@ export const Character = ({
           // HIDE_ZONE entry is blocked while standing — Maya must crouch to go under furniture.
           // Exception: if Maya is already on a HIDE_ZONE pixel (mask painted wider than intended),
           // allow movement so she isn't permanently trapped.
-          const canMove = res.type === 'WALK' || res.type === 'EXIT' ||
-              (res.type === 'HIDE_ZONE' && isKneelingRef.current);
+          const canMove = (res.type === 'WALK' || res.type === 'EXIT' ||
+              (res.type === 'HIDE_ZONE' && isKneelingRef.current)) &&
+              !checkNPCCollisionRef.current(nX, nY);
           if (canMove) {
             pos.current.x = Math.max(0, Math.min(worldW, nX));
             pos.current.y = Math.max(0, Math.min(worldH, nY));
@@ -502,6 +523,16 @@ export const Character = ({
           res = checkCollisionRef.current(pos.current.x, pos.current.y);
           // When stationary, reflect actual position in the hide zone tracker
           isInHideZoneRef.current = res.type === 'HIDE_ZONE';
+
+          // Regenerate vigor when idle
+          const VIGOR_REGEN_PER_FRAME = 0.3;
+          const MAX_VIGOR = 100;
+          if (gameState.vigor < MAX_VIGOR) {
+            setGameState(prev => ({
+              ...prev,
+              vigor: Math.min(MAX_VIGOR, prev.vigor + VIGOR_REGEN_PER_FRAME)
+            }));
+          }
 
           // Transition to idle animation once, not every frame
           if (isMovingRef.current) {

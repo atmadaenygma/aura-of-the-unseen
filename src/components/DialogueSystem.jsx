@@ -42,17 +42,40 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
   const [showDice,    setShowDice]    = useState(false);
   const [npcPortraitError, setNpcPortraitError] = useState(false);
   const [selectedOption, setSelectedOption] = useState(0);
+  const [displayedText, setDisplayedText] = useState('');
 
   const scrollRef    = useRef(null);
   const gpPrevRef    = useRef([]);
   const processRef   = useRef(null); // stable ref to processChoice so rAF loop stays fresh
 
-  // Auto-scroll to bottom on every ledger change
+  // Typewriter effect for dialogue text
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (!currentNode?.text) return;
+    setDisplayedText('');
+    let charIndex = 0;
+    const fullText = currentNode.text;
+    const interval = setInterval(() => {
+      if (charIndex < fullText.length) {
+        setDisplayedText(fullText.slice(0, charIndex + 1));
+        charIndex++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 60); // 60ms per character = slower, more readable pace
+    return () => clearInterval(interval);
+  }, [currentNode]);
+
+  // Smooth scroll to bottom, but only after typewriter completes
+  useEffect(() => {
+    if (scrollRef.current && displayedText === currentNode?.text) {
+      // Only scroll when typewriter is done
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 50);
     }
-  }, [history, currentNode, showDice]);
+  }, [displayedText, currentNode?.text]);
 
   // Reset portrait error state when speaker changes
   useEffect(() => {
@@ -170,6 +193,28 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
 
     // Apply any state mutations from this choice
     const updates = { ...gameState };
+
+    // Reset game state if this choice triggers a reset
+    if (choice.resetGame) {
+      const resetState = {
+        morphStability: 100,
+        vigor: 100,
+        money: 0.00,
+        inventory: [],
+        flags: { ...gameState.flags }, // Keep flags (e.g., detained_by_angus)
+        knowledge: gameState.knowledge || {},
+        currentRoom: gameState.currentRoom,
+        isMayaHidden: false,
+        nearbyEntity: null,
+        nearbyNPC: null,
+        currentTerrain: null,
+        activeAura: null,
+      };
+      setGameState(resetState);
+      onExit();
+      return;
+    }
+
     if (choice.flagTrigger) updates.flags          = { ...updates.flags, [choice.flagTrigger]: true };
     if (choice.impact)      updates.auraStability = Math.max(0, updates.auraStability + choice.impact);
     if (choice.rewardMoney) updates.money         += choice.rewardMoney;
@@ -229,6 +274,21 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
       background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column',
       backdropFilter: 'blur(7px)', overflow: 'hidden',
     }}>
+      <style>{`
+        .ledger-scroll-container::-webkit-scrollbar {
+          width: 12px;
+        }
+        .ledger-scroll-container::-webkit-scrollbar-track {
+          background: rgba(58,32,16,0.08);
+        }
+        .ledger-scroll-container::-webkit-scrollbar-thumb {
+          background: rgba(203,120,102,0.6);
+          border-radius: 6px;
+        }
+        .ledger-scroll-container::-webkit-scrollbar-thumb:hover {
+          background: rgba(203,120,102,0.8);
+        }
+      `}</style>
 
       {/* 1. THE SCROLLABLE CENTERED LEDGER */}
       <div
@@ -295,13 +355,28 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
               {currentNode.speaker.toUpperCase()}
             </div>
 
-            {/* DIALOGUE TEXT */}
+            {/* DIALOGUE TEXT — left-to-right typewriter effect */}
             <div style={{
               textAlign: currentNode.side === 'left' ? 'left' : 'right',
               color: TEXT, fontFamily: FONT_SER, fontSize: 20,
               lineHeight: 1.45, marginBottom: 28, fontWeight: '600',
+              minHeight: '2em',
+              position: 'relative',
+              overflow: 'hidden',
             }}>
-              "{currentNode.text}"
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                height: '100%',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(203,120,102,0.3) 50%, transparent 100%)',
+                width: `${(displayedText.length / (currentNode?.text?.length || 1)) * 100}%`,
+                transition: 'width 0.03s linear',
+                pointerEvents: 'none',
+              }} />
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                "{displayedText}<span style={{ opacity: displayedText !== currentNode?.text ? 1 : 0, fontWeight: 'bold' }}>|</span>"
+              </div>
             </div>
 
             {/* NEUROLOGICAL FACET BANNER */}

@@ -1,0 +1,12 @@
+[      50ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=87d22ef3:14336
+[      94ms] [WARNING] [audio] Music play blocked: NotAllowedError: play() failed because the user didn't interact with the document first. https://goo.gl/xX8pDD @ http://localhost:5173/@vite/client:509
+[   10580ms] [LOG] %c [SENSORS] LOGIC ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   10585ms] [LOG] %c [SENSORS] LOGIC ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   10587ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   10595ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   10619ms] [WARNING] [audio] Music play blocked: AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22 @ http://localhost:5173/@vite/client:509
+[   28222ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   28223ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   28229ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   28235ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   28296ms] [WARNING] [audio] Music play blocked: AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22 @ http://localhost:5173/@vite/client:509

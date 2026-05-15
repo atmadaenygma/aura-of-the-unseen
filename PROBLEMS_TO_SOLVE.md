@@ -1,59 +1,63 @@
 # Problems to Solve — Aura of the Unseen
 
-## SOLVED ✅
+## IN PROGRESS 🔴
 
-### 1. Loading Screen Not Visible on Room Transitions
-**Issue**: Loading screens appeared briefly then disappeared immediately, making them invisible to players.
+### 1. Spawn Locations Not Working
+**Issue**: Player spawn positions are incorrect when transitioning between rooms.
 
-**Root Cause**: The `hideLoading` useEffect in Stage.jsx had `showLoading` in its dependency array, causing it to fire when `showLoading` changed (setting it back to false immediately).
+**Affected Areas**: 
+- Spawn points in exits configuration
+- NPC spawn positions
+- Room entry/exit transitions
 
-**Solution**: Removed `showLoading` from dependency array - now useEffect only runs when `isReady` changes.
+**Files to Check**: 
+- `src/data/worldManifest.js` — exit spawn coordinates
+- `src/components/Stage.jsx` — spawn position handling
 
-**Commit**: 021bcc5 - "Fix: loading screen dependency array"
-
-**Files Modified**: `src/components/Stage.jsx` line 141
-
-**Status**: DEPLOYED to Vercel ✅
+**Status**: NEEDS INVESTIGATION
 
 ---
 
-## SOLVED ✅
+## IN PROGRESS 🔴
 
-### 2. silas_cabin Room Scale — Make Everything 15% Smaller
-**Issue**: silas_cabin room and all its contents were too large relative to the environment.
+### 2. Typewriter Effect Not Left-to-Right
+**Issue**: Typewriter text animation is not moving left-to-right as required.
 
-**Solution**: Scaled down all room elements uniformly by 15% (×0.85):
-- Room dimensions: 1920×1080 → 1632×918
-- Spawn position: 960,540 → 816,459
-- Character scale: 1.3 → 1.1 (Maya now 10% larger than baseline)
-- Movement scale: 1 → 0.85
-- NPC spawn: 1163,560 → 989,476
-- Overlay yDepth values all scaled by 0.85 (653→555, 883→751, 1053→895, 688→585)
+**Expected Behavior**: All dialogue text should reveal character-by-character with a left-to-right scan line gradient (90deg).
 
-**Files Modified**: `src/data/worldManifest.js` silas_cabin config (lines 276-336)
+**Files to Check**: 
+- `src/components/DialogueSystem.jsx` (lines ~358-380) — gradient direction and animation logic
 
-**Commit**: [pending] - "Scale silas_cabin room 15% smaller (×0.85)"
+**Status**: NEEDS INVESTIGATION
 
-**Status**: COMPLETE — Ready to deploy ✅
+---
+
+## IN PROGRESS 🔴
+
+### 3. Loading Screen Not Working
+**Issue**: Loading screens are not appearing on room transitions.
+
+**Expected Behavior**: Loading screen should display and remain visible during room load, then dismiss when ready.
+
+**Files to Check**: 
+- `src/components/Stage.jsx` — showLoading state and useEffect logic
+- `src/components/LoadingScreen.jsx` — component render
+
+**Status**: NEEDS INVESTIGATION
 
 ---
 
 ## REFERENCE
 
-### Known Good Values
-- Loading screen shows on room transitions (verified working)
-- Typewriter effect: both speakers left-to-right (90deg gradient) ✅
-- silas_cabin exit spawn: 895, 344 ✅
-- overseers_house_exterior entrance to silas_cabin: 895, 344 ✅
+### Configuration Values
+- silas_cabin dimensions (15% smaller): 1632×918
+- silas_cabin spawn: 816, 459
+- silas_cabin exit to overseers_house_exterior: 895, 344
+- Typewriter speed: 60ms per character
+- Typewriter gradient: 90deg (left-to-right)
 
-### Recent Commits
-- 021bcc5: Loading screen dependency fix
-- 9611468: major updates (loading screen + typewriter implementation)
-
----
-
-## Next Steps
-1. Test room proportions look correct with 15% scaling
-2. Verify NPC positions still make sense in scaled room
-3. Commit and redeploy to Vercel
+### Investigation Notes
+- All three issues appear on deployed Vercel build
+- Issues persist despite previous fixes being committed
+- Need to verify code is actually being deployed correctly
 

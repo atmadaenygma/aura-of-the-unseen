@@ -138,7 +138,7 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
     if (isReady && showLoading) {
       setShowLoading(false);
     }
-  }, [isReady, showLoading]);
+  }, [isReady]);
 
   // Handle NPC state transitions (ALERTED, CATCHING, FLEEING)
   useEffect(() => {

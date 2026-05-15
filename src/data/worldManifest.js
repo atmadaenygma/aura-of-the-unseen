@@ -278,11 +278,11 @@ export const WORLD_MANIFEST = {
     chapter:   0,    // DEV ONLY — not part of any chapter
     path:      "/textures/Whitney Plantation/silas_cabin",
     baseImage: "silas_cabin.png",
-    worldW:         1920,
-    worldH:         1080,
-    spawnPos:       { x: 960, y: 540 },  // Centered in room for better environment visibility
-    characterScale: 1.3,  // Maya 30% bigger in this room
-    moveScale:      1,
+    worldW:         1536,   // 1920 × 0.8 (20% smaller)
+    worldH:         864,    // 1080 × 0.8
+    spawnPos:       { x: 768, y: 432 },  // 960/540 × 0.8 — centered for environment visibility
+    characterScale: 1.04,   // 1.3 × 0.8 (Maya 4% bigger than normal)
+    moveScale:      0.8,    // 1 × 0.8 (80% normal movement speed)
     exits: {
       "e500ff": { to: "overseers_house_exterior", label: "Outside", spawnX: 895, spawnY: 344 },
     },
@@ -295,8 +295,8 @@ export const WORLD_MANIFEST = {
         name: 'Old Silas',
         assetPath: '/sprites/npcs/silas_idle.webm',
         scale: 1.04,
-        spawnX: 1163,
-        spawnY: 560,
+        spawnX: 930,    // 1163 × 0.8
+        spawnY: 448,    // 560 × 0.8
         role: 'ally',
         barks: [],
         dialogueKey: 'silas_intro',
@@ -328,10 +328,10 @@ export const WORLD_MANIFEST = {
     },
 
     overlays: [
-      { id: "bed_01",                 filename: "overlay_bed_01.png",                 yDepth: 653 },
-      { id: "bed_02",                 filename: "overlay_bed_02.png",                 yDepth: 883 },
-      { id: "bed_bottom_left",        filename: "overlay_bed_bottom_left.png",        yDepth: 1053 },
-      { id: "bed_tip_near_door",      filename: "overlay_bed_tip_near_door.png",      yDepth: 688 },
+      { id: "bed_01",                 filename: "overlay_bed_01.png",                 yDepth: 522 },   // 653 × 0.8
+      { id: "bed_02",                 filename: "overlay_bed_02.png",                 yDepth: 706 },   // 883 × 0.8
+      { id: "bed_bottom_left",        filename: "overlay_bed_bottom_left.png",        yDepth: 842 },   // 1053 × 0.8
+      { id: "bed_tip_near_door",      filename: "overlay_bed_tip_near_door.png",      yDepth: 550 },   // 688 × 0.8
     ],
   }
 };

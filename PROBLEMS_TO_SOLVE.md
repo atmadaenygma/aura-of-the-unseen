@@ -17,28 +17,24 @@
 
 ---
 
-## PENDING 🔄
+## SOLVED ✅
 
 ### 2. silas_cabin Room Scale — Make Everything 20% Smaller
-**Issue**: silas_cabin room and all its contents (masks, overlays, NPCs, player) are too large relative to the environment.
+**Issue**: silas_cabin room and all its contents were too large relative to the environment.
 
-**Scope**: Scale down by 20% (multiply all dimensions by 0.8):
-- Room dimensions (worldW, worldH)
-- All overlay positions and sizes
-- Character scale in this room (Maya)
-- NPC positions and scales
-- Move speed scale
+**Solution**: Scaled down all room elements uniformly by 20% (×0.8):
+- Room dimensions: 1920×1080 → 1536×864
+- Spawn position: 960,540 → 768,432
+- Character scale: 1.3 → 1.04 (Maya now 4% larger than baseline)
+- Movement scale: 1 → 0.8
+- NPC spawn: 1163,560 → 930,448
+- Overlay yDepth values all scaled by 0.8
 
-**Files to Modify**:
-- `src/data/worldManifest.js` — silas_cabin room config (lines 276-336)
-  - worldW: 1920 → 1536
-  - worldH: 1080 → 864
-  - characterScale: 1.3 → 1.04
-  - moveScale: 1 → 0.8
-  - All overlay yDepth values × 0.8
-  - old_silas spawnX/spawnY × 0.8
+**Files Modified**: `src/data/worldManifest.js` silas_cabin config (lines 276-336)
 
-**Status**: NOT STARTED
+**Commit**: 84d6b46 - "Scale silas_cabin room 20% smaller (×0.8)"
+
+**Status**: COMPLETE — Ready to deploy ✅
 
 ---
 

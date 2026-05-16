@@ -1,0 +1,43 @@
+[      66ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=87d22ef3:14336
+[      96ms] [WARNING] [audio] Music play blocked: NotAllowedError: play() failed because the user didn't interact with the document first. https://goo.gl/xX8pDD @ http://localhost:5173/@vite/client:509
+[    9651ms] [LOG] %c [SENSORS] LOGIC ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[    9664ms] [LOG] %c [SENSORS] LOGIC ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[    9665ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[    9669ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[    9686ms] [WARNING] [audio] Music play blocked: AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22 @ http://localhost:5173/@vite/client:509
+[   28417ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   28423ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   28425ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   28430ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   28442ms] [WARNING] [audio] Music play blocked: AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22 @ http://localhost:5173/@vite/client:509
+[  107502ms] [LOG] [Gamepad] Connected: "Unknown Gamepad (Vendor: 1532 Product: 022b)" — mapping: "" — 24 buttons, 10 axes @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:189
+[  107502ms] [LOG] [Gamepad] Connected: "Xbox One Game Controller (STANDARD GAMEPAD)" — mapping: "standard" — 17 buttons, 4 axes @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:189
+[  107521ms] [LOG] [Gamepad] Active: "Xbox One Game Controller (STANDARD GAMEPAD)" mapping="standard" axes=4 buttons=17 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:289
+[  107521ms] [LOG] [Gamepad] Axis values: 0:-0.86 1:0.02 2:0.02 3:-0.00 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:290
+[  109300ms] [LOG] %c [SENSORS] LOGIC ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  109303ms] [LOG] %c [SENSORS] LOGIC ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  109304ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  109309ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  109325ms] [LOG] [Gamepad] Active: "Xbox One Game Controller (STANDARD GAMEPAD)" mapping="standard" axes=4 buttons=17 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:289
+[  109325ms] [LOG] [Gamepad] Axis values: 0:0.04 1:0.05 2:0.02 3:-0.00 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:290
+[  111337ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  111341ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  111343ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  111345ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  111354ms] [LOG] [Gamepad] Active: "Xbox One Game Controller (STANDARD GAMEPAD)" mapping="standard" axes=4 buttons=17 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:289
+[  111354ms] [LOG] [Gamepad] Axis values: 0:0.01 1:0.06 2:0.02 3:-0.00 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:290
+[  111376ms] [WARNING] [audio] Music play blocked: AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22 @ http://localhost:5173/@vite/client:509
+[  133709ms] [LOG] %c [SENSORS] LOGIC ONLINE (2912x1632) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  133725ms] [LOG] %c [SENSORS] LOGIC ONLINE (2912x1632) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  133730ms] [LOG] %c [SENSORS] TERRAIN ONLINE (2912x1632) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  133745ms] [LOG] %c [SENSORS] TERRAIN ONLINE (2912x1632) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  133758ms] [WARNING] [audio] Music play blocked: AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22 @ http://localhost:5173/@vite/client:509
+[  133784ms] [LOG] [Gamepad] Active: "Xbox One Game Controller (STANDARD GAMEPAD)" mapping="standard" axes=4 buttons=17 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:289
+[  133784ms] [LOG] [Gamepad] Axis values: 0:-0.03 1:0.06 2:0.02 3:-0.00 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:290
+[  134573ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  134580ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  134582ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  134586ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[  134611ms] [LOG] [Gamepad] Active: "Xbox One Game Controller (STANDARD GAMEPAD)" mapping="standard" axes=4 buttons=17 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:289
+[  134611ms] [LOG] [Gamepad] Axis values: 0:-0.03 1:0.06 2:0.02 3:-0.00 @ http://localhost:5173/src/components/Character.jsx?t=1778824792860:290
+[  300096ms] [LOG] %c[SAVE] Auto-save color:#d4af37 @ http://localhost:5173/src/App.jsx?t=1778916103987:254

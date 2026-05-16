@@ -14,7 +14,9 @@
       "mcp__playwright__browser_press_key",
       "Bash(npm run *)",
       "Bash(git add *)",
-      "Bash(git commit -m 'Scale silas_cabin room 20% smaller \\(×0.8\\) *)"
+      "Bash(git commit -m 'Scale silas_cabin room 20% smaller \\(×0.8\\) *)",
+      "Bash(git commit -m 'Update: mark silas_cabin scaling as complete *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

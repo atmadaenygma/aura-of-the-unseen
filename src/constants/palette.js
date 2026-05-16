@@ -77,6 +77,9 @@ export const FACET_PURPLE = '#7a3a8a'; // nerve sense
 export const FACET_OLIVE  = '#5a6a2a'; // social crypsis
 export const FACET_BLUE   = '#2a5a7a'; // mimicry
 
+// ── Mimicry system ─────────────────────────────────────────────────────────────
+export const MIMICRY_SHIMMER = 'rgba(42,90,122,0.50)'; // FACET_BLUE at 50% — aura overlay while mimicry active
+
 // ── Journal — rival truth source colours (explicitly requested) ───────────────
 export const SOURCE_OBSERVATION = 'rgba(58,32,16,0.5)'; // Maya's own observation
 export const SOURCE_EVIDENCE    = '#2a7a5a'; // physical evidence / documentation (green)

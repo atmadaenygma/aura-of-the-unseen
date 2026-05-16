@@ -1,0 +1,12 @@
+[      45ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=87d22ef3:14336
+[    5974ms] [LOG] %c [SENSORS] LOGIC ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[    5980ms] [LOG] %c [SENSORS] LOGIC ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[    5982ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[    5988ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1264x848) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[    6011ms] [WARNING] [audio] Music play blocked: AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22 @ http://localhost:5173/@vite/client:509
+[   19752ms] [LOG] [SPAWN] test_house → overseers_house_exterior: from={"x":1266,"y":514} entry={"x":1322,"y":560} chosen={"x":1266,"y":514} @ http://localhost:5173/src/components/Stage.jsx?t=1778916549563:370
+[   19789ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   19800ms] [LOG] %c [SENSORS] LOGIC ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   19803ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   19809ms] [LOG] %c [SENSORS] TERRAIN ONLINE (1456x816) color: #00ffff @ http://localhost:5173/src/hooks/useNavigation.js?t=1778151593149:21
+[   19816ms] [WARNING] [audio] Music play blocked: AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22 @ http://localhost:5173/@vite/client:509

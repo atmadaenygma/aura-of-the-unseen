@@ -144,6 +144,12 @@ export const WORLD_MANIFEST = {
           'Aaaghhhh, a nigger'
         ],
 
+        // Mimicry
+        canBeMimicked: true,
+        suspicionThreshold: 0.6,
+        observeCatchBark: "Stop looking at me like that.",
+        observeCatchDialogue: 'angus_observe_catch',
+
         // Movement
         walkRadius: 350,
         idleChance: 0.75,
@@ -236,6 +242,12 @@ export const WORLD_MANIFEST = {
           'Stop standin\' around.'
         ],
 
+        // Mimicry
+        canBeMimicked: true,
+        suspicionThreshold: 0.8,
+        observeCatchBark: "What are you doing?",
+        observeCatchDialogue: 'overseer_observe_catch',
+
         // Movement
         walkRadius: 250,
         idleChance: 0.8,
@@ -319,6 +331,12 @@ export const WORLD_MANIFEST = {
         role: 'ally',
         barks: [],
         dialogueKey: 'silas_intro',
+
+        // Mimicry
+        canBeMimicked: false,
+        suspicionThreshold: null,
+        observeCatchBark: null,
+        observeCatchDialogue: null,
 
         // Movement
         walkRadius: 100,

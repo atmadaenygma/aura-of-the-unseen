@@ -1,0 +1,12 @@
+- generic [ref=e16]:
+  - generic [ref=e18]: "[E] ENTER"
+  - generic [ref=e22]: CTR
+  - generic [ref=e23]:
+    - button "MENU" [ref=e24] [cursor=pointer]
+    - button "JOURNAL" [ref=e25] [cursor=pointer]
+    - generic [ref=e27]:
+      - generic [ref=e29]: VIGOR
+      - generic [ref=e33]: AURA STABILITY
+      - generic [ref=e37]: HUNGER
+    - button "SATCHEL" [ref=e40] [cursor=pointer]
+    - button "STATUS" [ref=e41] [cursor=pointer]

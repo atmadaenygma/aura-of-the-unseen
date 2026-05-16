@@ -1,0 +1,71 @@
+- generic:
+  - generic:
+    - generic [ref=e44]:
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]: Old Silas
+          - generic [ref=e48]: "\"Girl. What brings you out this way? Not many venture down this road unless they've got somewhere to be or something to find.\""
+          - generic [ref=e49]: "Maya: \"(Respectful) 'I'm looking for honest work, sir. Hoping to find my way.'\""
+        - generic [ref=e50]:
+          - generic [ref=e51]: Old Silas
+          - generic [ref=e52]: "\"Girl. What brings you out this way? Not many venture down this road unless they've got somewhere to be or something to find.\""
+          - generic [ref=e53]: "Maya: \"(Respectful) 'I'm looking for honest work, sir. Hoping to find my way.'\""
+        - generic [ref=e54]:
+          - generic [ref=e55]: Old Silas
+          - generic [ref=e56]: "\"Mm. At least you've got manners. That's rarer than it used to be. Come—sit a moment. I've questions, and you might have answers.\""
+          - generic [ref=e57]: "Maya: \"Continue\""
+        - generic [ref=e58]:
+          - generic [ref=e59]: Old Silas
+          - generic [ref=e60]: "\"Mm. At least you've got manners. That's rarer than it used to be. Come—sit a moment. I've questions, and you might have answers.\""
+          - generic [ref=e61]: "Maya: \"Continue\""
+        - generic [ref=e62]:
+          - generic [ref=e63]: Old Silas
+          - generic [ref=e64]: "\"Well. You're here now. What is it you're seeking beneath this sun?\""
+          - generic [ref=e65]: "Maya: \"Tell me about the history of this house.\""
+        - generic [ref=e66]:
+          - generic [ref=e67]: Old Silas
+          - generic [ref=e68]: "\"Well. You're here now. What is it you're seeking beneath this sun?\""
+          - generic [ref=e69]: "Maya: \"Tell me about the history of this house.\""
+        - generic [ref=e83]:
+          - generic [ref=e84]: Old Silas
+          - generic [ref=e85]: "\"This wood was laid in 1840. Beneath these very boards, people spent months in the dark, praying the hounds wouldn't catch the scent of their fear.\""
+          - generic [ref=e86]: "Maya: \"Was anyone ever caught here?\""
+        - generic [ref=e88]:
+          - generic [ref=e89]: Old Silas
+          - generic [ref=e90]: "\"Caught? No. They were 'reclaimed'. Like you'd reclaim a stray tool. The blood on these boards never dried, even if you can't see it with those eyes.\""
+          - generic [ref=e91]: "Maya: \"[Back] I see. Let's talk of other things.\""
+        - generic [ref=e101]:
+          - generic [ref=e102]: Old Silas
+          - generic [ref=e103]: "\"Well. You're here now. What is it you're seeking beneath this sun?\""
+          - generic [ref=e104]: "Maya: \"Who is the man standing in the yard? (The Overseer)\""
+        - generic [ref=e70]:
+          - generic [ref=e71]: OLD SILAS
+          - generic [ref=e73]: "\"Him? That's Miller. He's got a no|\""
+          - generic [ref=e74]:
+            - generic [ref=e105]:
+              - img "Neurological Facet" [ref=e106]
+              - generic [ref=e107]: nerve sense
+            - generic [ref=e75]: "NERVE SENSE: Miller's vision cone is 120 degrees. If you are not in Social Crypsis (Kneeling/Slow), detection is 3x faster."
+          - generic [ref=e76]:
+            - button "1.How can I avoid him?" [ref=e108] [cursor=pointer]:
+              - generic [ref=e78]: "1."
+              - text: How can I avoid him?
+            - button "2.[Back] Enough about Miller." [active] [ref=e109] [cursor=pointer]:
+              - generic [ref=e94]: "2."
+              - text: "[Back] Enough about Miller."
+      - generic:
+        - img "Maya"
+      - generic:
+        - img "Old Silas"
+    - generic [ref=e16]:
+      - generic [ref=e82]: "[A] OLD SILAS"
+      - generic [ref=e22]: CTR
+      - generic [ref=e23]:
+        - button "MENU" [ref=e24] [cursor=pointer]
+        - button "JOURNAL" [ref=e25] [cursor=pointer]
+        - generic [ref=e27]:
+          - generic [ref=e29]: VIGOR
+          - generic [ref=e33]: AURA STABILITY
+          - generic [ref=e37]: HUNGER
+        - button "SATCHEL" [ref=e40] [cursor=pointer]
+        - button "STATUS" [ref=e41] [cursor=pointer]

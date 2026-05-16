@@ -324,10 +324,11 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           return;
         }
 
-        // Resolve spawn position: destination room's spawnPoints.from[currentRoom] → entry → legacy spawnPos
+        // Resolve spawn position: destination room's spawnPoints.from[sourceRoom] → entry → legacy spawnPos
         const destManifest = WORLD_MANIFEST[dest];
+        const sourceRoom = gameStateRef.current.currentRoom;
         const spawnPos =
-          destManifest.spawnPoints?.from?.[locationID]
+          destManifest.spawnPoints?.from?.[sourceRoom]
           ?? destManifest.spawnPoints?.entry
           ?? destManifest.spawnPos
           ?? { x: 640, y: 680 };

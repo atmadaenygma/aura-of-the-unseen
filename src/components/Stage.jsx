@@ -133,12 +133,12 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
     manifest.worldH ?? 800
   );
 
-  // Hide loading screen once assets are loaded
+  // Hide loading screen once assets are loaded or when room transition completes
   useEffect(() => {
     if (isReady && showLoading) {
       setShowLoading(false);
     }
-  }, [isReady]);
+  }, [isReady, locationID]);
 
   // Handle NPC state transitions (ALERTED, CATCHING, FLEEING)
   useEffect(() => {

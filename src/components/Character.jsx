@@ -123,6 +123,11 @@ export const Character = ({
   const checkNPCCollisionRef = useRef(null);
   useEffect(() => { checkNPCCollisionRef.current = checkNPCCollision; }, [checkNPCCollision]);
 
+  // Reset position when entering a new room (initialPos changes on room transition)
+  useEffect(() => {
+    pos.current = { ...initialPos };
+  }, [initialPos]);
+
   // --- ANIMATION UPDATER ---
   // Called from the game loop and from the keydown handler.
   // Only triggers a React re-render when the video src actually changes.

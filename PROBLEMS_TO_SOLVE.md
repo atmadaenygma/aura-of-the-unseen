@@ -1,34 +1,47 @@
 # Problems to Solve — Aura of the Unseen
 
-## IN PROGRESS 🔴
+## IN PROGRESS 🟢
 
-### 1. Spawn Locations Not Working
-**Issue**: Player spawn positions are incorrect when transitioning between rooms.
+### 1. Spawn System — Permanent Solution Implemented
+**Issue**: Scalable spawn point system for multi-map games with multiple exits per room.
 
-**Affected Areas**: 
-- Spawn points in exits configuration
-- NPC spawn positions
-- Room entry/exit transitions
+**Solution Implemented**: 
+- Each room now owns its spawn logic via `spawnPoints` object with `entry` and `from` fields
+- `from` field maps source rooms to their spawn coordinates in the destination
+- Eliminated cross-room coordinate scatter — all spawn data is self-contained per room
+- Replaced async mask-based fallback with direct manifest lookup
 
-**Files to Check**: 
-- `src/data/worldManifest.js` — exit spawn coordinates
-- `src/components/Stage.jsx` — spawn position handling
+**Architecture**:
+```js
+room: {
+  spawnPoints: {
+    entry: { x, y },              // Default spawn (no known origin)
+    from: {
+      "other_room": { x, y },     // Where to appear when coming from other_room
+      "another_room": { x, y },   // Multiple bidirectional connections
+    }
+  }
+}
+```
 
-**Status**: NEEDS INVESTIGATION
+**Files Modified**: 
+- `src/data/worldManifest.js` — added spawnPoints to all rooms, removed spawnX/spawnY from exits
+- `src/components/Stage.jsx` — replaced complex exit logic with simple 4-level fallback
+
+**Scales To**: Unlimited rooms, unlimited exits per room. Adding a new room = add spawnPoints object
+
+**Status**: IMPLEMENTED & READY FOR MULTI-MAP EXPANSION
 
 ---
 
-## IN PROGRESS 🔴
+## COMPLETE ✅
 
-### 2. Typewriter Effect Not Left-to-Right
-**Issue**: Typewriter text animation is not moving left-to-right as required.
+### 2. Typewriter Effect — All Text Left-to-Right
+**Issue**: Fixed — All dialogue now displays left-to-right with proper scan line animation.
 
-**Expected Behavior**: All dialogue text should reveal character-by-character with a left-to-right scan line gradient (90deg).
+**Solution**: Modified DialogueSystem.jsx to force left text alignment and scan line positioning regardless of speaker side.
 
-**Files to Check**: 
-- `src/components/DialogueSystem.jsx` (lines ~358-380) — gradient direction and animation logic
-
-**Status**: NEEDS INVESTIGATION
+**Status**: SOLVED
 
 ---
 

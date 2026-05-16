@@ -324,29 +324,19 @@ export const Stage = ({ locationID, manifest, gameState, setGameState, debugMode
           return;
         }
 
-        // Read spawn position from destination room's mask using the exit color
+        // Resolve spawn position: destination room's spawnPoints.from[currentRoom] → entry → legacy spawnPos
         const destManifest = WORLD_MANIFEST[dest];
+        const spawnPos =
+          destManifest.spawnPoints?.from?.[locationID]
+          ?? destManifest.spawnPoints?.entry
+          ?? destManifest.spawnPos
+          ?? { x: 640, y: 680 };
 
-        // Check if exit definition has explicit spawn coordinates
-        if (exitDef?.spawnX !== undefined && exitDef?.spawnY !== undefined) {
-          setGameState(prev => ({
-            ...prev,
-            currentRoom: dest,
-            nextRoomSpawn: { x: exitDef.spawnX, y: exitDef.spawnY },
-          }));
-        } else {
-          // Otherwise read from mask
-          readSpawnFromMask(
-            `${destManifest.path}/mask_logic.png`,
-            entity.exitKey
-          ).then((spawnPos) => {
-            setGameState(prev => ({
-              ...prev,
-              currentRoom: dest,
-              nextRoomSpawn: spawnPos || destManifest.spawnPos, // fallback to default spawn
-            }));
-          });
-        }
+        setGameState(prev => ({
+          ...prev,
+          currentRoom: dest,
+          nextRoomSpawn: spawnPos,
+        }));
         return;
       }
 

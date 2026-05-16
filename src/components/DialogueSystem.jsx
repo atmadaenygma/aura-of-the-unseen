@@ -321,14 +321,14 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
               />
             )}
             <div style={{
-              textAlign: record.side === 'left' ? 'left' : 'right',
+              textAlign: 'left',
               color: TEXT_MID, fontFamily: FONT, fontSize: 12,
               letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 4,
             }}>
               {record.speaker}
             </div>
             <div style={{
-              textAlign: record.side === 'left' ? 'left' : 'right',
+              textAlign: 'left',
               color: TEXT, fontFamily: FONT_SER, fontSize: 17, fontStyle: 'italic', lineHeight: 1.45,
             }}>
               "{record.text}"
@@ -346,7 +346,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
           <div style={{ minHeight: '100%' }}>
             {/* SPEAKER HEADER */}
             <div style={{
-              textAlign: currentNode.side === 'left' ? 'left' : 'right',
+              textAlign: 'left',
               color: TEXT, fontFamily: FONT, fontSize: 13,
               fontWeight: '900', letterSpacing: '4px',
               marginBottom: 18,
@@ -357,7 +357,7 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
 
             {/* DIALOGUE TEXT — left-to-right typewriter effect */}
             <div style={{
-              textAlign: currentNode.side === 'left' ? 'left' : 'right',
+              textAlign: 'left',
               color: TEXT, fontFamily: FONT_SER, fontSize: 20,
               lineHeight: 1.45, marginBottom: 28, fontWeight: '600',
               minHeight: '2em',
@@ -380,43 +380,56 @@ export const DialogueSystem = ({ dialogueKey, gameState, setGameState, onExit })
             </div>
 
             {/* NEUROLOGICAL FACET BANNER */}
-            {currentNode.introspection && (
-              <div style={{
-                position: 'relative', background: FACET_BG,
-                padding: '0 0 22px 0',
-                border: `1px solid ${FACET_COL}33`,
-                marginBottom: 32, overflow: 'hidden',
-              }}>
-                {currentNode.facet && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <img
-                      src={`/ui/concious_thoughts/${currentNode.facet}.png`}
-                      style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 12 }}
-                      alt="Neurological Facet"
-                      onError={(e) => {
-                        console.error(`MISSING ASSET: /ui/concious_thoughts/${currentNode.facet}.png`);
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                    <span style={{
-                      color: FACET_COL, fontFamily: FONT, fontSize: 12,
-                      fontWeight: '900', letterSpacing: '3px',
-                      textTransform: 'uppercase', marginBottom: 12,
-                      borderBottom: `1px solid ${FACET_COL}33`, paddingBottom: 5,
-                    }}>
-                      {currentNode.facet.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                )}
+            {currentNode.introspection && (() => {
+              const isMemoryUnlock = /^Memory Unlocked:/i.test(currentNode.introspection);
+              const isFact = !isMemoryUnlock && currentNode.introspection?.startsWith('Fact:');
+              const facetSlug = isMemoryUnlock ? 'knowledge'
+                : (currentNode.facet || (isFact ? 'perception' : null));
+              const facetLabel = isMemoryUnlock ? 'memetic acquisition'
+                : facetSlug?.replace(/_/g, ' ');
+              const facetText = isMemoryUnlock
+                ? currentNode.introspection.replace(/^Memory Unlocked:\s*/i, '')
+                : isFact
+                  ? currentNode.introspection.replace(/^Fact:\s*/, '')
+                  : currentNode.introspection;
+              return (
                 <div style={{
-                  color: FACET_COL, fontFamily: FONT_SER, fontSize: 15,
-                  fontStyle: 'italic', lineHeight: 1.7,
-                  textAlign: 'center', padding: '0 22px',
+                  position: 'relative', background: FACET_BG,
+                  padding: '0 0 22px 0',
+                  border: `1px solid ${FACET_COL}33`,
+                  marginBottom: 32, overflow: 'hidden',
                 }}>
-                  {currentNode.introspection}
+                  {facetSlug && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <img
+                        src={`/ui/concious_thoughts/${facetSlug}.png`}
+                        style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 12 }}
+                        alt="Neurological Facet"
+                        onError={(e) => {
+                          console.error(`MISSING ASSET: /ui/concious_thoughts/${facetSlug}.png`);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <span style={{
+                        color: FACET_COL, fontFamily: FONT, fontSize: 12,
+                        fontWeight: '900', letterSpacing: '3px',
+                        textTransform: 'uppercase', marginBottom: 12,
+                        borderBottom: `1px solid ${FACET_COL}33`, paddingBottom: 5,
+                      }}>
+                        {facetLabel}
+                      </span>
+                    </div>
+                  )}
+                  <div style={{
+                    color: FACET_COL, fontFamily: FONT_SER, fontSize: 15,
+                    fontStyle: 'italic', lineHeight: 1.7,
+                    textAlign: 'center', padding: '0 22px',
+                  }}>
+                    {facetText}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* DIALOGUE OPTIONS — keyboard/controller: arrows navigate, Enter/A confirms */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 18 }}>

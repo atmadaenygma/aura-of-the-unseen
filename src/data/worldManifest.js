@@ -17,6 +17,12 @@ export const WORLD_MANIFEST = {
     chapter: 0,    // DEV ONLY — not part of any chapter
     path: "/textures/Whitney Plantation/test_house",
     spawnPos:       { x: 1139, y: 652 },
+    spawnPoints: {
+      entry: { x: 1139, y: 652 },
+      from: {
+        "overseers_house_exterior": { x: 1139, y: 652 }
+      }
+    },
     exits: {
       "0,0,255": { to: "overseers_house_exterior" },
       // "05fff3":  { to: "room_id", label: "Door Name" },
@@ -191,11 +197,18 @@ export const WORLD_MANIFEST = {
     worldW:         2000,
     worldH:         900,
     spawnPos:       { x: 1322, y: 560 },
+    spawnPoints: {
+      entry: { x: 1322, y: 560 },
+      from: {
+        "test_house":   { x: 1266, y: 514 },
+        "silas_cabin":  { x: 897,  y: 344 }
+      }
+    },
     characterScale: 0.5,   // Maya appears at 50% her normal size in this room
     moveScale:      0.44,  // 56% slower movement in this room
     exits: {
       "0,0,255": { to: "test_house" },
-      "e500ff":  { to: "silas_cabin", label: "Silas' Cabin", spawnX: 895, spawnY: 344 },
+      "e500ff":  { to: "silas_cabin", label: "Silas' Cabin" },
       // "05fff3":  { to: "room_id", label: "Door Name" },
       // "ff0004":  { to: "room_id", label: "Door Name" },
       // "ff8400":  { to: "room_id", label: "Door Name" },
@@ -280,11 +293,17 @@ export const WORLD_MANIFEST = {
     baseImage: "silas_cabin.png",
     worldW:         1632,   // 1920 × 0.85 (15% smaller)
     worldH:         918,    // 1080 × 0.85
-    spawnPos:       { x: 816, y: 459 },  // 960/540 × 0.85 — centered for environment visibility
+    spawnPos:       { x: 463, y: 492 },
+    spawnPoints: {
+      entry: { x: 463, y: 492 },
+      from: {
+        "overseers_house_exterior": { x: 477, y: 492 }
+      }
+    },
     characterScale: 1.1,    // 1.3 × 0.85 (Maya 10% bigger than normal)
     moveScale:      0.85,   // 1 × 0.85 (85% normal movement speed)
     exits: {
-      "e500ff": { to: "overseers_house_exterior", label: "Outside", spawnX: 895, spawnY: 344 },
+      "e500ff": { to: "overseers_house_exterior", label: "Outside" },
     },
 
     entities:    {},
